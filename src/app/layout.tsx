@@ -10,7 +10,7 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  title: 'BalanceBeam',
+  title: 'Main Wallet',
   description: 'Your Modern Wallet Experience',
 };
 

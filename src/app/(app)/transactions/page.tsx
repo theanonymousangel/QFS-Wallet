@@ -15,7 +15,7 @@ import type { Metadata } from 'next';
 
 // This metadata would ideally be in a server component or a head.tsx file, but for client components, we can't use it directly.
 // export const metadata: Metadata = {
-//   title: 'Transactions - BalanceBeam',
+//   title: 'Transactions - Main Wallet',
 //   description: 'View your complete transaction history.',
 // };
 

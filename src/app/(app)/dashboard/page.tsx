@@ -5,8 +5,8 @@ import { AccountInfo } from '@/components/dashboard/account-info';
 import type { Metadata } from 'next';
 
 export const metadata: Metadata = {
-  title: 'Dashboard - BalanceBeam',
-  description: 'Your financial overview on BalanceBeam.',
+  title: 'Dashboard - Main Wallet',
+  description: 'Your financial overview on Main Wallet.',
 };
 
 export default function DashboardPage() {

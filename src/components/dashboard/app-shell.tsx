@@ -69,7 +69,7 @@ export function AppShell({ children }: { children: ReactNode }) {
 
   const getInitials = (name: string) => {
     const names = name.split(' ');
-    if (names.length > 1) {
+    if (names.length > 1 && names[0] && names[names.length -1]) {
       return `${names[0][0]}${names[names.length - 1][0]}`.toUpperCase();
     }
     return name.substring(0, 2).toUpperCase();
@@ -77,10 +77,10 @@ export function AppShell({ children }: { children: ReactNode }) {
 
   const sidebarContent = (
     <div className="flex h-full flex-col">
-      <div className="flex h-16 items-center border-b border-border px-6">
+      <div className="flex h-16 items-center border-b border-sidebar-border px-6">
         <Link href="/dashboard" className="flex items-center gap-2 font-semibold text-primary">
           <Gem className="h-7 w-7" />
-          <span className="text-xl">BalanceBeam</span>
+          <span className="text-xl">Main Wallet</span>
         </Link>
       </div>
       <nav className="flex-1 overflow-auto py-4">
@@ -90,9 +90,9 @@ export function AppShell({ children }: { children: ReactNode }) {
               <Link
                 href={item.href}
                 className={cn(
-                  'flex items-center gap-3 rounded-lg px-3 py-2 text-muted-foreground transition-all hover:text-primary hover:bg-accent',
+                  'flex items-center gap-3 rounded-lg px-3 py-2 text-sidebar-foreground transition-all hover:text-sidebar-primary hover:bg-sidebar-accent',
                   // TODO: Add active state based on current route
-                  // item.active && 'bg-accent text-primary'
+                  // item.active && 'bg-sidebar-accent text-sidebar-primary'
                 )}
               >
                 <item.icon className="h-5 w-5" />
@@ -107,7 +107,7 @@ export function AppShell({ children }: { children: ReactNode }) {
 
   return (
     <div className="grid min-h-screen w-full lg:grid-cols-[280px_1fr]">
-      <div className="hidden border-r bg-card lg:block">
+      <div className="hidden border-r border-sidebar-border bg-sidebar lg:block">
         {sidebarContent}
       </div>
       <div className="flex flex-col">
@@ -119,7 +119,7 @@ export function AppShell({ children }: { children: ReactNode }) {
                 <span className="sr-only">Toggle navigation menu</span>
               </Button>
             </SheetTrigger>
-            <SheetContent side="left" className="flex flex-col p-0">
+            <SheetContent side="left" className="flex flex-col p-0 bg-sidebar text-sidebar-foreground border-sidebar-border">
               {sidebarContent}
             </SheetContent>
           </Sheet>
