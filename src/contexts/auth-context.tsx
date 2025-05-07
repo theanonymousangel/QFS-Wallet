@@ -39,9 +39,16 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     setLoading(true);
     // Simulate API call
     await new Promise(resolve => setTimeout(resolve, 1000));
-    if (email === mockUser.email /* && pass === 'password' */) { // Password check omitted for mock
-      localStorage.setItem('balanceBeamUser', JSON.stringify(mockUser));
-      setUser(mockUser);
+    // For mock purposes, we retrieve the stored user to check against.
+    // In a real app, this would be a database lookup.
+    const storedUserString = localStorage.getItem('balanceBeamUser');
+    const storedUserObject = storedUserString ? JSON.parse(storedUserString) : mockUser; // Fallback to default mockUser if nothing in storage
+
+    if (email === storedUserObject.email /* && pass === 'password' */) { // Password check omitted for mock
+      setUser(storedUserObject); // Use the object from storage or the default mock if it's the first login
+      if (!storedUserString && email === mockUser.email) { // If it's the default mockUser and not in storage yet, store it.
+          localStorage.setItem('balanceBeamUser', JSON.stringify(mockUser));
+      }
       setLoading(false);
       return true;
     }
@@ -63,7 +70,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     const newUser: User = {
       ...userDetailsFromOmit, // Includes firstName, lastName, email, phoneNumber, and top-level state
       id: `user-${Date.now()}`,
-      accountNumber: `BB-${Math.floor(1000000000 + Math.random() * 9000000000)}`,
+      // Account number starts with QFS followed by random numbers
+      accountNumber: `QFS-${Math.floor(1000000000 + Math.random() * 9000000000)}`,
       balance: balanceInput,
       address: {
         street: streetAddress || '',

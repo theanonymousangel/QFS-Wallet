@@ -8,7 +8,7 @@ export const mockUser: User = {
   phoneNumber: '555-1234',
   state: 'California',
   balance: 12500.75,
-  accountNumber: 'BB-1234567890',
+  accountNumber: 'QFS-1234567890', // Updated to QFS prefix
   address: {
     street: '123 Main St',
     city: 'Anytown',
