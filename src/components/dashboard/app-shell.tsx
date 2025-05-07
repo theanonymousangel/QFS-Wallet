@@ -1,15 +1,15 @@
 'use client';
 
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation'; // usePathname for active route
 import type { ReactNode } from 'react';
-import * as React from 'react'; // Added import for React
+import * as React from 'react'; 
 import {
   Home,
   Settings,
   LogOut,
-  Landmark,
-  ArrowRightLeft,
+  Landmark, // For Withdraw
+  ArrowRightLeft, // For Transactions
   Menu,
   Gem
 } from 'lucide-react';
@@ -32,57 +32,52 @@ interface NavItem {
   href: string;
   label: string;
   icon: React.ElementType;
-  active?: boolean; // Will be determined by current path
 }
 
 export function AppShell({ children }: { children: ReactNode }) {
   const { user, logout, loading } = useAuth();
   const router = useRouter();
-
-  // Determine active route (client-side only)
-  const [currentPath, setCurrentPath] = React.useState('');
-  React.useEffect(() => {
-    if (typeof window !== 'undefined') {
-      setCurrentPath(window.location.pathname);
-    }
-  }, []);
+  const currentPath = usePathname(); // Use Next.js hook for path
 
 
   if (loading) {
     return (
-      <div className="flex h-screen items-center justify-center">
-        {/* Placeholder for a proper loading spinner */}
-        <p>Loading application...</p>
+      <div className="flex h-screen items-center justify-center bg-background">
+        <Loader2 className="h-12 w-12 animate-spin text-primary" />
+        <p className="ml-4 text-lg">Loading application...</p>
       </div>
     );
   }
 
   if (!user) {
-    // This should ideally be handled by a higher-order component or middleware
-    // redirecting to login if user is not authenticated.
-    // For now, a simple check and redirect.
-    if (typeof window !== 'undefined') { // Ensure router is used client-side
-        router.push('/login');
+    // Handled by useEffect in HomePage or a middleware. 
+    // If still here, redirect.
+    if (typeof window !== 'undefined') { 
+        router.replace('/login'); // Changed to replace to avoid history stack issues
     }
     return null; 
   }
 
   const navItems: NavItem[] = [
-    { href: '/dashboard', label: 'Dashboard', icon: Home },
+    { href: '/dashboard', label: 'Home', icon: Home }, // Renamed Dashboard to Home
     { href: '/transactions', label: 'Transactions', icon: ArrowRightLeft },
-    { href: '/withdraw', label: 'Withdraw', icon: Landmark },
+    { href: '/withdraw', label: 'Withdrawals', icon: Landmark }, // Added Withdrawals
     { href: '/settings', label: 'Settings', icon: Settings },
   ];
 
-  const getInitials = (name: string) => {
+  const getInitials = (name: string = '') => { // Added default empty string
     const names = name.split(' ');
     if (names.length > 1 && names[0] && names[names.length -1]) {
       return `${names[0][0]}${names[names.length - 1][0]}`.toUpperCase();
     }
-    return name.substring(0, 2).toUpperCase();
+    if (name.length > 0) return name.substring(0, 2).toUpperCase(); // Fallback for single name
+    return '??'; // Fallback if name is empty
   };
 
-  const sidebarContent = (
+  const userFullName = user ? `${user.firstName} ${user.lastName}` : 'User';
+
+
+  const sidebarContent = (isMobile?: boolean) => (
     <div className="flex h-full flex-col">
       <div className="flex h-16 items-center border-b border-sidebar-border px-6">
         <Link href="/dashboard" className="flex items-center gap-2 font-semibold text-primary">
@@ -91,14 +86,14 @@ export function AppShell({ children }: { children: ReactNode }) {
         </Link>
       </div>
       <nav className="flex-1 overflow-auto py-4">
-        <ul className="grid items-start gap-2 px-4 text-sm font-medium">
+        <ul className="grid items-start gap-1 px-4 text-sm font-medium"> {/* Reduced gap slightly */}
           {navItems.map((item) => (
             <li key={item.label}>
               <Link
                 href={item.href}
                 className={cn(
-                  'flex items-center gap-3 rounded-lg px-3 py-2 text-sidebar-foreground transition-all hover:text-sidebar-primary hover:bg-sidebar-accent',
-                  currentPath === item.href && 'bg-sidebar-accent text-sidebar-primary'
+                  'flex items-center gap-3 rounded-lg px-3 py-2.5 text-sidebar-foreground transition-all hover:text-sidebar-primary hover:bg-sidebar-accent', // Adjusted padding
+                  currentPath === item.href && 'bg-sidebar-accent text-sidebar-primary font-semibold'
                 )}
               >
                 <item.icon className="h-5 w-5" />
@@ -108,13 +103,26 @@ export function AppShell({ children }: { children: ReactNode }) {
           ))}
         </ul>
       </nav>
+      {/* Logout Button added to sidebar bottom */}
+      <div className="mt-auto border-t border-sidebar-border p-4">
+        <Button variant="ghost" className="w-full justify-start gap-3 text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-primary" onClick={logout}>
+            <LogOut className="h-5 w-5" />
+            Logout
+        </Button>
+      </div>
     </div>
   );
+  
+  // Define Loader2 here if not globally available or imported
+  const Loader2 = ({ className }: { className?: string }) => (
+    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={cn("animate-spin", className)}><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>
+  );
+
 
   return (
     <div className="grid min-h-screen w-full lg:grid-cols-[280px_1fr]">
       <div className="hidden border-r border-sidebar-border bg-sidebar lg:block">
-        {sidebarContent}
+        {sidebarContent()}
       </div>
       <div className="flex flex-col">
         <header className="flex h-16 items-center gap-4 border-b bg-card px-6">
@@ -125,8 +133,8 @@ export function AppShell({ children }: { children: ReactNode }) {
                 <span className="sr-only">Toggle navigation menu</span>
               </Button>
             </SheetTrigger>
-            <SheetContent side="left" className="flex flex-col p-0 bg-sidebar text-sidebar-foreground border-sidebar-border">
-              {sidebarContent}
+            <SheetContent side="left" className="flex flex-col p-0 bg-sidebar text-sidebar-foreground border-sidebar-border w-[280px]"> {/* Ensure width for mobile */}
+              {sidebarContent(true)}
             </SheetContent>
           </Sheet>
           
@@ -136,8 +144,8 @@ export function AppShell({ children }: { children: ReactNode }) {
               <DropdownMenuTrigger asChild>
                 <Button variant="ghost" size="icon" className="rounded-full">
                   <Avatar className="h-9 w-9">
-                    <AvatarImage src="/placeholder-user.jpg" alt={user.firstName} data-ai-hint="user avatar" />
-                    <AvatarFallback>{getInitials(`${user.firstName} ${user.lastName}`)}</AvatarFallback>
+                    <AvatarImage src="/placeholder-user.jpg" alt={userFullName} data-ai-hint="user avatar" />
+                    <AvatarFallback>{getInitials(userFullName)}</AvatarFallback>
                   </Avatar>
                 </Button>
               </DropdownMenuTrigger>
@@ -148,7 +156,7 @@ export function AppShell({ children }: { children: ReactNode }) {
                   <Settings className="mr-2 h-4 w-4" />
                   Settings
                 </DropdownMenuItem>
-                <DropdownMenuItem onClick={logout}>
+                <DropdownMenuItem onClick={logout}> {/* Logout in dropdown as well */}
                   <LogOut className="mr-2 h-4 w-4" />
                   Logout
                 </DropdownMenuItem>

@@ -5,12 +5,27 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { ArrowRightLeft, ArrowUpRight, ArrowDownLeft, Landmark } from 'lucide-react';
 import type { Transaction } from '@/lib/types';
-import { mockTransactions } from '@/lib/mock-data'; // Using mock data
+// Removed mockTransactions import, will use localStorage or context
 import { cn } from '@/lib/utils';
-import { format } from 'date-fns';
+import { format, parseISO } from 'date-fns';
+import { useEffect, useState } from 'react';
 
 export function RecentTransactions() {
-  const transactions: Transaction[] = mockTransactions.slice(0, 3); // Get last 3
+  const [recentWithdrawals, setRecentWithdrawals] = useState<Transaction[]>([]);
+
+  useEffect(() => {
+    // Load transactions from localStorage
+    const storedTransactions = localStorage.getItem('userTransactions');
+    if (storedTransactions) {
+      const allTransactions: Transaction[] = JSON.parse(storedTransactions);
+      // Filter for withdrawals, sort by date descending, take top 3
+      const withdrawals = allTransactions
+        .filter(tx => tx.type === 'Withdrawal')
+        .sort((a, b) => parseISO(b.date).getTime() - parseISO(a.date).getTime())
+        .slice(0, 3);
+      setRecentWithdrawals(withdrawals);
+    }
+  }, []); // Runs once on mount, and if we add a dependency for transactions updates
 
   const getTransactionIcon = (type: Transaction['type']) => {
     switch (type) {
@@ -20,7 +35,7 @@ export function RecentTransactions() {
       case 'Expense':
         return <ArrowDownLeft className="h-5 w-5 text-red-500" />;
       case 'Withdrawal':
-        return <Landmark className="h-5 w-5 text-blue-500" />;
+        return <Landmark className="h-5 w-5 text-primary" />; // Changed color
       default:
         return <ArrowRightLeft className="h-5 w-5 text-muted-foreground" />;
     }
@@ -35,20 +50,20 @@ export function RecentTransactions() {
     <Card className="shadow-lg">
       <CardHeader className="flex flex-row items-center justify-between">
         <div>
-          <CardTitle>Recent Transactions</CardTitle>
-          <CardDescription>Your latest financial activities.</CardDescription>
+          <CardTitle>Recent Withdrawals</CardTitle>
+          <CardDescription>Your latest 3 withdrawal activities.</CardDescription>
         </div>
         <Button asChild variant="outline" size="sm">
-          <Link href="/transactions">View All</Link>
+          <Link href="/transactions">View All Transactions</Link>
         </Button>
       </CardHeader>
       <CardContent>
-        {transactions.length === 0 ? (
-          <p className="text-muted-foreground text-center py-4">No recent transactions.</p>
+        {recentWithdrawals.length === 0 ? (
+          <p className="text-muted-foreground text-center py-4">No recent withdrawals.</p>
         ) : (
           <ul className="space-y-4">
-            {transactions.map((tx) => (
-              <li key={tx.id} className="flex items-center justify-between p-3 rounded-lg hover:bg-accent/50 transition-colors">
+            {recentWithdrawals.map((tx) => (
+              <li key={tx.id} className="flex items-center justify-between p-3 rounded-lg hover:bg-accent/20 transition-colors">
                 <div className="flex items-center gap-3">
                   <div className="p-2 bg-muted rounded-full">
                     {getTransactionIcon(tx.type)}
@@ -56,15 +71,16 @@ export function RecentTransactions() {
                   <div>
                     <p className="font-medium text-foreground">{tx.description}</p>
                     <p className="text-sm text-muted-foreground">
-                      {format(new Date(tx.date), 'MMM dd, yyyy')} - {tx.type}
+                      {format(parseISO(tx.date), 'MMM dd, yyyy')} - {tx.status}
                     </p>
                   </div>
                 </div>
                 <div className={cn(
                   "font-semibold",
-                  tx.amount > 0 ? "text-green-600" : "text-red-600"
+                  tx.status === 'Rejected' ? "text-muted-foreground line-through" : "text-red-600" // Assuming withdrawals are negative
                 )}>
-                  {tx.amount > 0 ? '+' : ''}{formatCurrency(tx.amount)}
+                  {/* Withdrawals are typically negative, so show absolute and a minus sign */}
+                  -{formatCurrency(Math.abs(tx.amount))}
                 </div>
               </li>
             ))}

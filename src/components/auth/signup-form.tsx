@@ -21,16 +21,22 @@ import { useAuth } from '@/contexts/auth-context';
 import { useToast } from '@/hooks/use-toast';
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Loader2 } from 'lucide-react';
+import { COUNTRIES_LIST } from '@/lib/countries'; // Assuming you have a list of countries
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+
 
 const signupFormSchema = z.object({
   firstName: z.string().min(1, { message: 'First name is required.' }),
   lastName: z.string().min(1, { message: 'Last name is required.' }),
   email: z.string().email({ message: 'Please enter a valid email.' }),
   password: z.string().min(6, { message: 'Password must be at least 6 characters.' }),
+  country: z.string().min(1, { message: 'Country is required.'}),
   phoneNumber: z.string().optional(),
-  streetAddress: z.string().optional(),
-  state: z.string().optional(),
-  balanceInput: z.coerce.number().min(0, { message: 'Balance must be a positive number.' }),
+  addressStreet: z.string().min(1, { message: 'Street address is required.' }),
+  addressCity: z.string().min(1, { message: 'City is required.' }),
+  addressState: z.string().min(1, { message: 'State/Province is required.' }),
+  addressZip: z.string().min(1, { message: 'ZIP/Postal code is required.' }),
+  initialBalance: z.coerce.number().min(0, { message: 'Balance must be a positive number.' }),
 });
 
 type SignupFormValues = z.infer<typeof signupFormSchema>;
@@ -48,22 +54,24 @@ export function SignupForm() {
       lastName: '',
       email: '',
       password: '',
+      country: '',
       phoneNumber: '',
-      streetAddress: '',
-      state: '',
-      balanceInput: 0,
+      addressStreet: '',
+      addressCity: '',
+      addressState: '',
+      addressZip: '',
+      initialBalance: 0,
     },
   });
 
   async function onSubmit(data: SignupFormValues) {
     setIsLoading(true);
-    // The signup function in AuthContext expects password to be part of the data payload.
     const success = await signup(data); 
     setIsLoading(false);
 
     if (success) {
-      toast({ title: 'Signup Successful', description: 'Your account has been created.' });
-      router.push('/dashboard');
+      toast({ title: 'Signup Successful', description: 'Account created. Redirecting to Home...' });
+      router.push('/dashboard'); // Redirect to Home Page
     } else {
       toast({
         title: 'Signup Failed',
@@ -76,7 +84,7 @@ export function SignupForm() {
   return (
     <Card className="shadow-xl">
       <CardHeader>
-        <CardTitle className="text-2xl text-center">Create Your Account</CardTitle>
+        <CardTitle className="text-2xl text-center">Create User Account</CardTitle>
       </CardHeader>
       <CardContent>
         <Form {...form}>
@@ -135,6 +143,30 @@ export function SignupForm() {
                 </FormItem>
               )}
             />
+             <FormField
+              control={form.control}
+              name="country"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Country</FormLabel>
+                  <Select onValueChange={field.onChange} defaultValue={field.value}>
+                    <FormControl>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select country" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      {COUNTRIES_LIST.map((country) => (
+                        <SelectItem key={country.code} value={country.name}>
+                          {country.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
             <FormField
               control={form.control}
               name="phoneNumber"
@@ -148,28 +180,54 @@ export function SignupForm() {
                 </FormItem>
               )}
             />
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                <FormField
-                  control={form.control}
-                  name="streetAddress"
-                  render={({ field }) => (
+            <FormField
+              control={form.control}
+              name="addressStreet"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Street Address</FormLabel>
+                  <FormControl>
+                    <Input placeholder="123 Main St" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+               <FormField
+                control={form.control}
+                name="addressCity"
+                render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Street Address (Optional)</FormLabel>
-                      <FormControl>
-                        <Input placeholder="123 Main St" {...field} />
-                      </FormControl>
-                      <FormMessage />
+                    <FormLabel>City</FormLabel>
+                    <FormControl>
+                        <Input placeholder="Anytown" {...field} />
+                    </FormControl>
+                    <FormMessage />
                     </FormItem>
-                  )}
+                )}
                 />
                 <FormField
                 control={form.control}
-                name="state"
+                name="addressState"
                 render={({ field }) => (
                     <FormItem>
-                    <FormLabel>State (Optional)</FormLabel>
+                    <FormLabel>State / Province</FormLabel>
                     <FormControl>
                         <Input placeholder="California" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                    </FormItem>
+                )}
+                />
+                <FormField
+                control={form.control}
+                name="addressZip"
+                render={({ field }) => (
+                    <FormItem>
+                    <FormLabel>ZIP / Postal Code</FormLabel>
+                    <FormControl>
+                        <Input placeholder="90210" {...field} />
                     </FormControl>
                     <FormMessage />
                     </FormItem>
@@ -178,10 +236,10 @@ export function SignupForm() {
             </div>
             <FormField
               control={form.control}
-              name="balanceInput"
+              name="initialBalance"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Initial Balance</FormLabel>
+                  <FormLabel>Initial Account Balance</FormLabel>
                   <FormControl>
                     <Input type="number" placeholder="0.00" {...field} step="0.01" />
                   </FormControl>

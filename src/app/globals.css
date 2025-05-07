@@ -9,96 +9,96 @@ body {
 @layer base {
   :root {
     --background: 0 0% 100%; /* White */
-    --foreground: 45 70% 30%; /* Dark Gold */
+    --foreground: 47 100% 50%; /* Gold (#FDCB00) */
 
     --card: 0 0% 100%; /* White */
-    --card-foreground: 45 70% 30%; /* Dark Gold */
+    --card-foreground: 47 100% 50%; /* Gold (#FDCB00) */
 
     --popover: 0 0% 100%; /* White */
-    --popover-foreground: 45 70% 30%; /* Dark Gold */
+    --popover-foreground: 47 100% 50%; /* Gold (#FDCB00) */
 
-    --primary: 45 85% 50%; /* Gold */
-    --primary-foreground: 0 0% 100%; /* White */
+    --primary: 47 100% 50%; /* Gold (#FDCB00) */
+    --primary-foreground: 0 0% 10%; /* Very Dark Gray/Almost Black (for text on Gold button backgrounds) */
 
-    --secondary: 45 80% 70%; /* Lighter Gold */
-    --secondary-foreground: 45 70% 30%; /* Dark Gold */
+    --secondary: 47 100% 90%; /* Very Light Gold */
+    --secondary-foreground: 47 100% 40%; /* Darker Gold (for text on Very Light Gold) */
 
-    --muted: 0 0% 95%; /* Very Light Gray */
-    --muted-foreground: 45 60% 50%; /* Muted Gold */
+    --muted: 0 0% 96%; /* Very Light Gray / Off-white */
+    --muted-foreground: 47 90% 55%; /* Muted Gold (slightly less saturated/bright) */
 
-    --accent: 45 85% 50%; /* Gold */
-    --accent-foreground: 0 0% 100%; /* White */
+    --accent: 47 100% 50%; /* Gold (#FDCB00) */
+    --accent-foreground: 0 0% 10%; /* Very Dark Gray/Almost Black (for text on Gold accent backgrounds) */
 
     --destructive: 0 72% 51%; 
     --destructive-foreground: 0 0% 98%;
 
-    --border: 45 80% 75%; /* Soft Lighter Gold border */
+    --border: 47 100% 50%; /* Gold (#FDCB00) for frames/borders */
     --input: 0 0% 100%; /* White input backgrounds */
-    --ring: 45 85% 55%; /* Gold focus ring */
+    --ring: 47 100% 55%; /* Gold focus ring */
 
-    --chart-1: 45 85% 50%;  /* Gold */
-    --chart-2: 45 75% 65%;  /* Lighter Gold */
-    --chart-3: 45 60% 40%;  /* Darker/Muted Gold */
-    --chart-4: 45 90% 75%;  /* Very Light Gold/Pale Yellow */
-    --chart-5: 0 0% 60%;    /* Mid Gray */
+    --chart-1: 47 100% 50%;  /* Gold */
+    --chart-2: 47 100% 65%;  /* Lighter Gold */
+    --chart-3: 47 100% 40%;  /* Darker Gold */
+    --chart-4: 47 100% 75%;  /* Very Light Gold/Pale Yellow */
+    --chart-5: 0 0% 60%;    /* Mid Gray (can be a contrasting neutral) */
 
     --radius: 0.5rem;
 
     /* Sidebar specific colors */
-    --sidebar-background: 0 0% 98%; /* Slightly off-white */
-    --sidebar-foreground: 45 70% 30%; /* Dark Gold */
-    --sidebar-primary: 45 85% 50%; /* Gold */
-    --sidebar-primary-foreground: 0 0% 100%; /* White */
-    --sidebar-accent: 45 85% 90%; /* Very Light Gold for hover/active items background */
-    --sidebar-accent-foreground: 45 70% 30%; /* Dark Gold text on very light gold accent background */
-    --sidebar-border: 45 80% 85%; /* Light gold border */
-    --sidebar-ring: 45 85% 55%; /* Gold focus ring */
+    --sidebar-background: 0 0% 100%; /* White */
+    --sidebar-foreground: 47 100% 50%; /* Gold text */
+    --sidebar-primary: 47 100% 50%; /* Gold active/primary elements */
+    --sidebar-primary-foreground: 0 0% 10%; /* Dark text on gold elements */
+    --sidebar-accent: 47 100% 92%; /* Very Light Gold for hover/active items background */
+    --sidebar-accent-foreground: 47 100% 45%; /* Darker gold text on light gold accent background */
+    --sidebar-border: 47 100% 50%; /* Gold border */
+    --sidebar-ring: 47 100% 55%; /* Gold focus ring */
   }
 
   .dark {
-    --background: 45 10% 10%; /* Very Dark Desaturated Gold/Brownish Black */
-    --foreground: 45 80% 80%; /* Light Gold */
+    --background: 47 30% 5%; /* Very Dark Brown/almost black with slight gold tint */
+    --foreground: 47 100% 70%; /* Lighter, brighter Gold for text */
 
-    --card: 45 10% 15%; /* Slightly lighter dark */
-    --card-foreground: 45 80% 80%;
+    --card: 47 30% 8%; /* Slightly lighter than main dark BG */
+    --card-foreground: 47 100% 70%;
 
-    --popover: 45 10% 12%;
-    --popover-foreground: 45 80% 80%;
+    --popover: 47 30% 7%;
+    --popover-foreground: 47 100% 70%;
 
-    --primary: 45 85% 60%; /* Brighter Gold */
-    --primary-foreground: 0 0% 100%; /* White */
+    --primary: 47 100% 60%; /* Bright Gold */
+    --primary-foreground: 0 0% 95%; /* Almost White (for text on Bright Gold in dark mode) */
 
-    --secondary: 45 70% 40%; /* Muted Gold or Dark Orange */
-    --secondary-foreground: 45 80% 85%; /* Light Gold */
+    --secondary: 47 50% 20%; /* Dark Muted Gold */
+    --secondary-foreground: 47 100% 80%; /* Light Gold text */
 
-    --muted: 45 10% 20%; /* Dark muted */
-    --muted-foreground: 45 50% 65%; /* Mid-tone grey/gold */
+    --muted: 47 30% 12%; /* Darker muted background */
+    --muted-foreground: 47 80% 60%; /* Mid-tone gold for muted text */
 
-    --accent: 45 85% 60%; /* Brighter Gold */
-    --accent-foreground: 0 0% 100%; /* White */
+    --accent: 47 100% 60%; /* Bright Gold for accent */
+    --accent-foreground: 0 0% 95%; /* Almost White (for text on accent) */
 
     --destructive: 0 70% 60%;
     --destructive-foreground: 0 0% 98%;
 
-    --border: 45 50% 40%; /* Medium Gold border */
-    --input: 45 10% 18%; /* Dark input background */
-    --ring: 45 85% 65%; /* Brighter Gold focus ring */
+    --border: 47 100% 60%; /* Bright Gold border */
+    --input: 47 30% 10%; /* Dark input background */
+    --ring: 47 100% 65%; /* Brighter Gold focus ring */
 
-    --chart-1: 45 85% 60%;  /* Bright Gold */
-    --chart-2: 45 75% 70%;  /* Brighter Light Gold */
-    --chart-3: 45 60% 50%;  /* Medium Gold */
-    --chart-4: 45 90% 80%;  /* Very Bright Pale Gold */
+    --chart-1: 47 100% 60%;  /* Bright Gold */
+    --chart-2: 47 100% 70%;  /* Brighter Light Gold */
+    --chart-3: 47 100% 50%;  /* Medium Gold */
+    --chart-4: 47 100% 80%;  /* Very Bright Pale Gold */
     --chart-5: 0 0% 50%;    /* Lighter Gray */
 
     /* Dark Sidebar specific colors */
-    --sidebar-background: 45 10% 8%; /* Darker than main bg */
-    --sidebar-foreground: 45 80% 75%; /* Light Gold text */
-    --sidebar-primary: 45 85% 60%; /* Bright Gold */
-    --sidebar-primary-foreground: 0 0% 100%; /* White */
-    --sidebar-accent: 45 20% 25%; /* Darker Gold/Brown for hover BG */
-    --sidebar-accent-foreground: 45 80% 80%; /* Light Gold text on darker hover BG */
-    --sidebar-border: 45 20% 30%;
-    --sidebar-ring: 45 85% 65%;
+    --sidebar-background: 47 30% 4%; /* Darker than main dark bg */
+    --sidebar-foreground: 47 100% 70%; /* Light Gold text */
+    --sidebar-primary: 47 100% 60%; /* Bright Gold */
+    --sidebar-primary-foreground: 0 0% 95%; /* Almost white */
+    --sidebar-accent: 47 40% 15%; /* Darker Gold/Brown for hover BG */
+    --sidebar-accent-foreground: 47 100% 75%; /* Light Gold text on darker hover BG */
+    --sidebar-border: 47 100% 60%; /* Bright Gold border */
+    --sidebar-ring: 47 100% 65%;
   }
 }
 
@@ -116,6 +116,6 @@ body {
 /* Add a subtle background pattern or texture for auth pages if desired */
 .auth-background {
   /* Example: subtle noise */
-  /* background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='4' height='4' viewBox='0 0 4 4'%3E%3Cpath fill='%23d4af37' fill-opacity='0.05' d='M1 3h1v1H1V3zm2-2h1v1H3V1z'%3E%3C/path%3E%3C/svg%3E"); */
+  /* background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='4' height='4' viewBox='0 0 4 4'%3E%3Cpath fill='%23FDCB00' fill-opacity='0.05' d='M1 3h1v1H1V3zm2-2h1v1H3V1z'%3E%3C/path%3E%3C/svg%3E"); */
   background-color: hsl(var(--background)); /* Fallback */
 }

@@ -20,8 +20,23 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { useAuth } from '@/contexts/auth-context';
 import { useToast } from '@/hooks/use-toast';
-import { Loader2, UserCircle, Save } from 'lucide-react';
+import { Loader2, UserCircle, Save, ShieldAlert, Edit3 } from 'lucide-react';
 import type { User } from '@/lib/types';
+import { ADMIN_CODE } from '@/lib/types';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
+import { COUNTRIES_LIST } from '@/lib/countries';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+
 
 const settingsFormSchema = z.object({
   firstName: z.string().min(1, 'First name is required.'),
@@ -36,8 +51,8 @@ const settingsFormSchema = z.object({
   addressCity: z.string().optional(),
   addressState: z.string().optional(),
   addressZip: z.string().optional(),
-  addressCountry: z.string().optional(),
-  // Balance is not editable here directly
+  country: z.string().optional(),
+  balance: z.coerce.number().min(0, 'Balance cannot be negative.'),
 }).refine(data => data.password === data.confirmPassword, {
   message: "Passwords don't match",
   path: ["confirmPassword"],
@@ -46,9 +61,13 @@ const settingsFormSchema = z.object({
 type SettingsFormValues = z.infer<typeof settingsFormSchema>;
 
 export default function SettingsPage() {
-  const { user, setUser, loading: authLoading } = useAuth();
+  const { user, setUser, loading: authLoading, updateUserBalance } = useAuth();
   const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(false);
+  const [isBalanceEditing, setIsBalanceEditing] = useState(false);
+  const [adminCodeInput, setAdminCodeInput] = useState('');
+  const [showAdminCodeDialog, setShowAdminCodeDialog] = useState(false);
+
 
   const form = useForm<SettingsFormValues>({
     resolver: zodResolver(settingsFormSchema),
@@ -63,7 +82,8 @@ export default function SettingsPage() {
       addressCity: '',
       addressState: '',
       addressZip: '',
-      addressCountry: '',
+      country: '',
+      balance: 0,
     },
   });
 
@@ -73,12 +93,13 @@ export default function SettingsPage() {
         firstName: user.firstName,
         lastName: user.lastName,
         email: user.email,
+        country: user.country,
         phoneNumber: user.phoneNumber || '',
         addressStreet: user.address?.street || '',
         addressCity: user.address?.city || '',
         addressState: user.address?.state || '',
         addressZip: user.address?.zip || '',
-        addressCountry: user.address?.country || '',
+        balance: user.balance,
       });
     }
   }, [user, form]);
@@ -103,9 +124,26 @@ export default function SettingsPage() {
   
   const currentFullName = `${form.watch('firstName') || user.firstName} ${form.watch('lastName') || user.lastName}`;
 
+  const handleBalanceEditAttempt = () => {
+    setShowAdminCodeDialog(true);
+  };
+
+  const handleAdminCodeSubmit = async () => {
+    if (adminCodeInput === ADMIN_CODE) {
+      setIsBalanceEditing(true);
+      setShowAdminCodeDialog(false);
+      setAdminCodeInput(''); // Clear input
+      toast({ title: "Admin Access Granted", description: "You can now edit the balance." });
+    } else {
+      toast({ title: "Admin Access Denied", description: "Incorrect admin code.", variant: "destructive" });
+      setAdminCodeInput(''); // Clear input
+    }
+  };
+
 
   async function onSubmit(data: SettingsFormValues) {
     setIsLoading(true);
+    
     // Simulate API call
     await new Promise(resolve => setTimeout(resolve, 1500));
 
@@ -113,29 +151,45 @@ export default function SettingsPage() {
       firstName: data.firstName,
       lastName: data.lastName,
       email: data.email,
+      country: data.country,
       phoneNumber: data.phoneNumber,
       address: {
         street: data.addressStreet || '',
         city: data.addressCity || '',
         state: data.addressState || '',
         zip: data.addressZip || '',
-        country: data.addressCountry || '',
+        country: data.country || '', // country is also top-level now
       },
+      // Balance is handled separately if edited
     };
-
-    // In a real app, if password is changed, you'd make a separate API call
-    // For now, we just acknowledge it
-    if (data.password) {
-      toast({ title: 'Password Update', description: 'Password change functionality is conceptual for this mock.' });
+    
+    let balanceUpdated = false;
+    if (isBalanceEditing && data.balance !== user.balance) {
+      const success = await updateUserBalance(data.balance, ADMIN_CODE); // Pass current code for safety, already validated
+      if (success) {
+        balanceUpdated = true;
+      } else {
+        toast({ title: "Balance Update Failed", description: "Could not update balance.", variant: "destructive"});
+      }
     }
     
-    setUser(prevUser => prevUser ? { ...prevUser, ...updatedUserFields } : null);
+    setUser(prevUser => {
+      if (!prevUser) return null;
+      const updatedUser = { ...prevUser, ...updatedUserFields };
+      if (balanceUpdated) {
+        updatedUser.balance = data.balance;
+      }
+      return updatedUser;
+    });
 
     setIsLoading(false);
     toast({
       title: 'Settings Updated',
       description: 'Your profile information has been saved.',
     });
+    
+    if (balanceUpdated) setIsBalanceEditing(false); // Reset balance editing state
+
     form.reset({}, { keepValues: true }); // Reset dirty state but keep current values
     if (data.password) { // Clear password fields after submission
         form.setValue('password', '');
@@ -165,6 +219,42 @@ export default function SettingsPage() {
         <CardContent>
           <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
+              
+              {/* Balance Field */}
+              <FormField
+                control={form.control}
+                name="balance"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel className="flex items-center">
+                      Account Balance
+                      {!isBalanceEditing && (
+                        <Button variant="ghost" size="sm" onClick={handleBalanceEditAttempt} className="ml-2 p-1 h-auto">
+                          <Edit3 className="h-4 w-4 mr-1" /> Edit
+                        </Button>
+                      )}
+                    </FormLabel>
+                    <FormControl>
+                      <div className="relative">
+                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">$</span>
+                        <Input 
+                          type="number" 
+                          step="0.01"
+                          {...field} 
+                          className="pl-8 text-lg"
+                          readOnly={!isBalanceEditing}
+                          aria-readonly={!isBalanceEditing}
+                        />
+                      </div>
+                    </FormControl>
+                    {!isBalanceEditing && <FormDescription>Click "Edit" and enter admin code to modify balance.</FormDescription>}
+                    {isBalanceEditing && <FormDescription className="text-destructive">Balance editing enabled. Use with caution.</FormDescription>}
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+
               <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
                 <FormField
                   control={form.control}
@@ -242,6 +332,30 @@ export default function SettingsPage() {
               <CardTitle className="text-xl pt-4 border-t mt-4">Address Details</CardTitle>
                 <FormField
                   control={form.control}
+                  name="country"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Country</FormLabel>
+                       <Select onValueChange={field.onChange} defaultValue={field.value}>
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select country" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          {COUNTRIES_LIST.map((countryItem) => (
+                            <SelectItem key={countryItem.code} value={countryItem.name}>
+                              {countryItem.name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
                   name="addressStreet"
                   render={({ field }) => (
                     <FormItem>
@@ -286,20 +400,9 @@ export default function SettingsPage() {
                         )}
                         />
                 </div>
-                <FormField
-                  control={form.control}
-                  name="addressCountry"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Country</FormLabel>
-                      <FormControl><Input placeholder="USA" {...field} /></FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
 
               <CardFooter className="border-t pt-6 px-0">
-                <Button type="submit" className="ml-auto" disabled={isLoading || !form.formState.isDirty}>
+                <Button type="submit" className="ml-auto" disabled={isLoading || (!form.formState.isDirty && !isBalanceEditing)}>
                   {isLoading ? (
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                   ) : (
@@ -312,6 +415,30 @@ export default function SettingsPage() {
           </Form>
         </CardContent>
       </Card>
+
+      {/* Admin Code Dialog */}
+      <AlertDialog open={showAdminCodeDialog} onOpenChange={setShowAdminCodeDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center"><ShieldAlert className="mr-2 h-5 w-5 text-destructive" /> Administrator Access Required</AlertDialogTitle>
+            <AlertDialogDescription>
+              To edit the account balance, please enter the administrator code.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <div className="py-4">
+            <Input 
+              type="password"
+              placeholder="Enter admin code"
+              value={adminCodeInput}
+              onChange={(e) => setAdminCodeInput(e.target.value)}
+            />
+          </div>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => setAdminCodeInput('')}>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleAdminCodeSubmit} disabled={!adminCodeInput}>Submit Code</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
