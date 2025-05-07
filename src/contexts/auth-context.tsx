@@ -27,10 +27,21 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const router = useRouter();
 
   useEffect(() => {
-    // Simulate checking for an existing session
-    const storedUser = localStorage.getItem('balanceBeamUser');
-    if (storedUser) {
-      setUser(JSON.parse(storedUser));
+    setLoading(true); // Ensure loading is true at the start
+    const storedUserString = localStorage.getItem('balanceBeamUser');
+    if (storedUserString) {
+      try {
+        let userFromStorage: User = JSON.parse(storedUserString);
+        // Migration logic for account number prefix
+        if (userFromStorage.accountNumber && typeof userFromStorage.accountNumber === 'string' && userFromStorage.accountNumber.startsWith('BB-')) {
+          userFromStorage.accountNumber = userFromStorage.accountNumber.replace('BB-', 'QFS-');
+          localStorage.setItem('balanceBeamUser', JSON.stringify(userFromStorage)); // Update localStorage
+        }
+        setUser(userFromStorage);
+      } catch (error) {
+        console.error("Failed to parse user from localStorage", error);
+        localStorage.removeItem('balanceBeamUser'); // Clear corrupted data
+      }
     }
     setLoading(false);
   }, []);
@@ -39,15 +50,16 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     setLoading(true);
     // Simulate API call
     await new Promise(resolve => setTimeout(resolve, 1000));
-    // For mock purposes, we retrieve the stored user to check against.
-    // In a real app, this would be a database lookup.
+    
     const storedUserString = localStorage.getItem('balanceBeamUser');
-    const storedUserObject = storedUserString ? JSON.parse(storedUserString) : mockUser; // Fallback to default mockUser if nothing in storage
+    // If user logged in after initial load, storedUserString should reflect migrated data if applicable.
+    // mockUser is used as a fallback if localStorage is empty.
+    const storedUserObject = storedUserString ? JSON.parse(storedUserString) : mockUser; 
 
     if (email === storedUserObject.email /* && pass === 'password' */) { // Password check omitted for mock
-      setUser(storedUserObject); // Use the object from storage or the default mock if it's the first login
-      if (!storedUserString && email === mockUser.email) { // If it's the default mockUser and not in storage yet, store it.
-          localStorage.setItem('balanceBeamUser', JSON.stringify(mockUser));
+      setUser(storedUserObject); 
+      if (!storedUserString && email === mockUser.email) { 
+          localStorage.setItem('balanceBeamUser', JSON.stringify(mockUser)); // mockUser already has QFS-
       }
       setLoading(false);
       return true;
@@ -65,20 +77,18 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     await new Promise(resolve => setTimeout(resolve, 1000));
 
     const { balanceInput, password, streetAddress, ...userDetailsFromOmit } = userData;
-    // userDetailsFromOmit contains: firstName, lastName, email, phoneNumber?, state?
-
+    
     const newUser: User = {
-      ...userDetailsFromOmit, // Includes firstName, lastName, email, phoneNumber, and top-level state
+      ...userDetailsFromOmit, 
       id: `user-${Date.now()}`,
-      // Account number starts with QFS followed by random numbers
-      accountNumber: `QFS-${Math.floor(1000000000 + Math.random() * 9000000000)}`,
+      accountNumber: `QFS-${Math.floor(1000000000 + Math.random() * 9000000000)}`, // Generates QFS- prefix
       balance: balanceInput,
       address: {
         street: streetAddress || '',
-        city: '', // Not collected at signup
-        state: userDetailsFromOmit.state || '', // Use state from form for address.state
-        zip: '', // Not collected at signup
-        country: '', // Not collected at signup
+        city: '', 
+        state: userDetailsFromOmit.state || '', 
+        zip: '', 
+        country: '', 
       },
     };
     localStorage.setItem('balanceBeamUser', JSON.stringify(newUser));
