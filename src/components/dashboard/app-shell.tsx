@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import type { ReactNode } from 'react';
+import * as React from 'react'; // Added import for React
 import {
   Home,
   Settings,
@@ -25,7 +26,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 import { cn } from '@/lib/utils';
-import { ThemeToggleButton } from '@/components/theme-toggle-button'; // Added import
+import { ThemeToggleButton } from '@/components/theme-toggle-button';
 
 interface NavItem {
   href: string;
