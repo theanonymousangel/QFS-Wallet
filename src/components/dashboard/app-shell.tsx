@@ -8,12 +8,8 @@ import {
   Settings,
   LogOut,
   Landmark,
-  Wallet,
   ArrowRightLeft,
-  UserCircle,
   Menu,
-  CreditCard,
-  DollarSign,
   Gem
 } from 'lucide-react';
 import { useAuth } from '@/contexts/auth-context';
@@ -29,6 +25,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 import { cn } from '@/lib/utils';
+import { ThemeToggleButton } from '@/components/theme-toggle-button'; // Added import
 
 interface NavItem {
   href: string;
@@ -40,6 +37,15 @@ interface NavItem {
 export function AppShell({ children }: { children: ReactNode }) {
   const { user, logout, loading } = useAuth();
   const router = useRouter();
+
+  // Determine active route (client-side only)
+  const [currentPath, setCurrentPath] = React.useState('');
+  React.useEffect(() => {
+    if (typeof window !== 'undefined') {
+      setCurrentPath(window.location.pathname);
+    }
+  }, []);
+
 
   if (loading) {
     return (
@@ -91,8 +97,7 @@ export function AppShell({ children }: { children: ReactNode }) {
                 href={item.href}
                 className={cn(
                   'flex items-center gap-3 rounded-lg px-3 py-2 text-sidebar-foreground transition-all hover:text-sidebar-primary hover:bg-sidebar-accent',
-                  // TODO: Add active state based on current route
-                  // item.active && 'bg-sidebar-accent text-sidebar-primary'
+                  currentPath === item.href && 'bg-sidebar-accent text-sidebar-primary'
                 )}
               >
                 <item.icon className="h-5 w-5" />
@@ -125,6 +130,7 @@ export function AppShell({ children }: { children: ReactNode }) {
           </Sheet>
           
           <div className="ml-auto flex items-center gap-4">
+            <ThemeToggleButton /> 
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button variant="ghost" size="icon" className="rounded-full">
