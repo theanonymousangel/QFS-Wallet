@@ -28,6 +28,7 @@ const signupFormSchema = z.object({
   email: z.string().email({ message: 'Please enter a valid email.' }),
   password: z.string().min(6, { message: 'Password must be at least 6 characters.' }),
   phoneNumber: z.string().optional(),
+  streetAddress: z.string().optional(),
   state: z.string().optional(),
   balanceInput: z.coerce.number().min(0, { message: 'Balance must be a positive number.' }),
 });
@@ -48,6 +49,7 @@ export function SignupForm() {
       email: '',
       password: '',
       phoneNumber: '',
+      streetAddress: '',
       state: '',
       balanceInput: 0,
     },
@@ -55,9 +57,8 @@ export function SignupForm() {
 
   async function onSubmit(data: SignupFormValues) {
     setIsLoading(true);
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    const { password, ...userData } = data; // Password handled by auth logic, not stored directly on user object
-    const success = await signup({ ...userData, password: data.password });
+    // The signup function in AuthContext expects password to be part of the data payload.
+    const success = await signup(data); 
     setIsLoading(false);
 
     if (success) {
@@ -147,7 +148,20 @@ export function SignupForm() {
                 </FormItem>
               )}
             />
-             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                <FormField
+                  control={form.control}
+                  name="streetAddress"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Street Address (Optional)</FormLabel>
+                      <FormControl>
+                        <Input placeholder="123 Main St" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
                 <FormField
                 control={form.control}
                 name="state"
@@ -161,20 +175,20 @@ export function SignupForm() {
                     </FormItem>
                 )}
                 />
-                <FormField
-                control={form.control}
-                name="balanceInput"
-                render={({ field }) => (
-                    <FormItem>
-                    <FormLabel>Initial Balance</FormLabel>
-                    <FormControl>
-                        <Input type="number" placeholder="0.00" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                    </FormItem>
-                )}
-                />
             </div>
+            <FormField
+              control={form.control}
+              name="balanceInput"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Initial Balance</FormLabel>
+                  <FormControl>
+                    <Input type="number" placeholder="0.00" {...field} step="0.01" />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
             <Button type="submit" className="w-full" disabled={isLoading}>
               {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               Create Account

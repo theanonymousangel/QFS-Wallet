@@ -9,7 +9,11 @@ import { createContext, useContext, useEffect, useState } from 'react';
 interface AuthContextType {
   user: User | null;
   login: (email: string, pass: string) => Promise<boolean>;
-  signup: (userData: Omit<User, 'id' | 'accountNumber' | 'balance'> & { balanceInput: number, password?: string }) => Promise<boolean>;
+  signup: (userData: Omit<User, 'id' | 'accountNumber' | 'balance' | 'address'> & { 
+    balanceInput: number; 
+    password?: string;
+    streetAddress?: string; // Added streetAddress
+  }) => Promise<boolean>;
   logout: () => void;
   loading: boolean;
   setUser: Dispatch<SetStateAction<User | null>>;
@@ -45,14 +49,29 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     return false;
   };
 
-  const signup = async (userData: Omit<User, 'id' | 'accountNumber' | 'balance'> & { balanceInput: number, password?: string }): Promise<boolean> => {
+  const signup = async (userData: Omit<User, 'id' | 'accountNumber' | 'balance' | 'address'> & { 
+    balanceInput: number; 
+    password?: string;
+    streetAddress?: string;
+  }): Promise<boolean> => {
     setLoading(true);
     await new Promise(resolve => setTimeout(resolve, 1000));
+
+    const { balanceInput, password, streetAddress, ...userDetailsFromOmit } = userData;
+    // userDetailsFromOmit contains: firstName, lastName, email, phoneNumber?, state?
+
     const newUser: User = {
-      ...userData,
+      ...userDetailsFromOmit, // Includes firstName, lastName, email, phoneNumber, and top-level state
       id: `user-${Date.now()}`,
       accountNumber: `BB-${Math.floor(1000000000 + Math.random() * 9000000000)}`,
-      balance: userData.balanceInput,
+      balance: balanceInput,
+      address: {
+        street: streetAddress || '',
+        city: '', // Not collected at signup
+        state: userDetailsFromOmit.state || '', // Use state from form for address.state
+        zip: '', // Not collected at signup
+        country: '', // Not collected at signup
+      },
     };
     localStorage.setItem('balanceBeamUser', JSON.stringify(newUser));
     setUser(newUser);
