@@ -2,7 +2,7 @@
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { CreditCard, Bitcoin, UserCircle, Copy, Landmark as BankIcon } from 'lucide-react'; // Added BankIcon
+import { CreditCard, Bitcoin, UserCircle, Copy, Landmark as BankIcon } from 'lucide-react';
 import { useAuth } from '@/contexts/auth-context';
 import { AppleWalletIcon } from '@/components/icons/apple-wallet-icon';
 import { GoogleWalletIcon } from '@/components/icons/google-wallet-icon';
@@ -24,39 +24,45 @@ export function AccountInfo() {
   };
 
   const connectionOptions = [
-    { label: 'Withdraw to Bank', icon: BankIcon, href: '/withdraw' }, // Changed to BankIcon
+    { label: 'Withdraw to Bank', icon: BankIcon, href: '/withdraw' },
     { label: 'Apple Wallet', icon: AppleWalletIcon, action: () => toast({ title: "Coming Soon!", description: "Apple Wallet integration is under development." }) },
     { label: 'Google Wallet', icon: GoogleWalletIcon, action: () => toast({ title: "Coming Soon!", description: "Google Wallet integration is under development." }) },
     { label: 'Add to Crypto Wallet', icon: Bitcoin, action: () => toast({ title: "Coming Soon!", description: "Crypto Wallet integration is under development." }) },
   ];
 
   return (
-    <Card className="shadow-lg">
+    <Card className="shadow-lg h-full"> {/* Added h-full to try to match height with BalanceDisplay if in a grid */}
       <CardHeader>
-        {/* Removed UserCircle icon from here to match image 6 section A more closely */}
-        <CardTitle className="text-xl">{user.firstName} {user.lastName}</CardTitle>
-        <div className="flex items-center gap-1">
-            <CardDescription className="text-sm">Account No: {user.accountNumber}</CardDescription>
-            <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => copyToClipboard(user.accountNumber, "Account Number")}>
-                <Copy className="h-4 w-4 text-muted-foreground hover:text-primary" />
-                <span className="sr-only">Copy Account Number</span>
-            </Button>
+        <div className="flex items-center gap-3">
+            <div className="p-2 bg-primary/10 rounded-full">
+                 <UserCircle className="h-6 w-6 text-primary" />
+            </div>
+            <div>
+                <CardTitle className="text-xl">{user.firstName} {user.lastName}</CardTitle>
+                <div className="flex items-center gap-1">
+                    <CardDescription className="text-sm text-muted-foreground">Account No: {user.accountNumber}</CardDescription>
+                    <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => copyToClipboard(user.accountNumber, "Account Number")}>
+                        <Copy className="h-3.5 w-3.5 text-muted-foreground hover:text-primary" />
+                        <span className="sr-only">Copy Account Number</span>
+                    </Button>
+                </div>
+            </div>
         </div>
       </CardHeader>
       <CardContent>
-        {/* Removed "Wallet Connections:" text to match image 6 section A */}
+        <p className="text-sm font-medium text-foreground mb-3">Wallet Connections:</p>
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
           {connectionOptions.map((opt) => (
             opt.href ? (
-              <Button key={opt.label} variant="outline" className="justify-start gap-2 h-12 text-base" asChild>
+              <Button key={opt.label} variant="outline" className="justify-start gap-2 h-11 text-sm" asChild>
                 <Link href={opt.href}>
-                  <opt.icon className="h-5 w-5 text-primary/80" />
+                  <opt.icon className="h-4 w-4 text-primary/80" />
                   {opt.label}
                 </Link>
               </Button>
             ) : (
-              <Button key={opt.label} variant="outline" className="justify-start gap-2 h-12 text-base" onClick={opt.action}>
-                <opt.icon className="h-5 w-5 text-primary/80" />
+              <Button key={opt.label} variant="outline" className="justify-start gap-2 h-11 text-sm" onClick={opt.action}>
+                <opt.icon className="h-4 w-4 text-primary/80" />
                 {opt.label}
               </Button>
             )
