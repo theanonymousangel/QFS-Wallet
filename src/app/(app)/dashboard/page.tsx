@@ -1,3 +1,5 @@
+'use client';
+
 import { BalanceDisplay } from '@/components/dashboard/balance-display';
 import { IncomeOverview } from '@/components/dashboard/income-overview'; // Renamed from InterestSection in plan to IncomeOverview
 import { RecentTransactions } from '@/components/dashboard/recent-transactions';
@@ -5,14 +7,14 @@ import { AccountInfo } from '@/components/dashboard/account-info';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { TrendingUp, Hourglass, ListChecks } from 'lucide-react';
 import type { Metadata } from 'next';
-import { useAuth } from '@/contexts/auth-context'; // Assuming auth context provides these
+import { useAuth } from '@/contexts/auth-context'; 
 import { InterestSection } from '@/components/dashboard/interest-section';
 
 
-export const metadata: Metadata = {
-  title: 'Home - Main Wallet',
-  description: 'Your financial overview on Main Wallet.',
-};
+// export const metadata: Metadata = {  // Metadata should be defined in layout or page.js for server components
+//   title: 'Home - Main Wallet',
+//   description: 'Your financial overview on Main Wallet.',
+// };
 
 
 // Helper to format currency consistently
@@ -78,3 +80,4 @@ export default function DashboardPage() {
     </div>
   );
 }
+
