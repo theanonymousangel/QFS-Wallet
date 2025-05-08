@@ -6,6 +6,7 @@ export interface Currency {
 
 export const SUPPORTED_CURRENCIES: Currency[] = [
   { code: 'USD', symbol: '$', name: 'United States Dollar' },
+  { code: 'CAD', symbol: '$', name: 'Canadian Dollar' },
   { code: 'EUR', symbol: '€', name: 'Euro' },
   { code: 'JPY', symbol: '¥', name: 'Japanese Yen' },
   { code: 'GBP', symbol: '£', name: 'British Pound' },
@@ -13,7 +14,6 @@ export const SUPPORTED_CURRENCIES: Currency[] = [
   { code: 'CNY', symbol: '¥', name: 'Chinese Yuan' },
   { code: 'BRL', symbol: 'R$', name: 'Brazilian Real' },
   { code: 'ZAR', symbol: 'R', name: 'South African Rand' },
-  { code: 'CAD', symbol: '$', name: 'Canadian Dollar' },
 ];
 
 export const DEFAULT_CURRENCY_CODE = 'USD';
@@ -31,4 +31,3 @@ export const getDefaultCurrency = (): Currency => {
   }
   return defaultCurrency;
 };
-
