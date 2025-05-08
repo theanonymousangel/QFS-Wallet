@@ -14,7 +14,7 @@ export default function AuthLayout({
                  <Gem className="h-10 w-10 text-primary-foreground" />
             </div>
           <h1 className="text-4xl font-bold tracking-tight text-foreground">
-            Main Wallet
+            QFS Wallet
           </h1>
           <p className="mt-2 text-muted-foreground">
             Your Modern Wallet Experience
@@ -25,3 +25,4 @@ export default function AuthLayout({
     </div>
   );
 }
+

@@ -11,7 +11,7 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  title: 'Main Wallet',
+  title: 'QFS Wallet',
   description: 'Your Modern Wallet Experience',
 };
 
@@ -38,3 +38,4 @@ export default function RootLayout({
     </html>
   );
 }
+

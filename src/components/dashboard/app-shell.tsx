@@ -64,6 +64,8 @@ export function AppShell({ children }: { children: ReactNode }) {
   if (!user) {
     // This case should ideally be handled by the useEffect above or a middleware.
     // Returning null while useEffect triggers redirection.
+     // Redirect inside useEffect to avoid rendering during render phase
+    // The component will return null or a loader while redirecting.
     return (
       <div className="flex h-screen items-center justify-center bg-background">
         <Loader2 className="h-12 w-12 animate-spin text-primary" />
@@ -96,7 +98,7 @@ export function AppShell({ children }: { children: ReactNode }) {
       <div className="flex h-16 items-center border-b border-sidebar-border px-6">
         <Link href="/dashboard" className="flex items-center gap-2 font-semibold text-sidebar-primary">
           <Gem className="h-7 w-7" />
-          <span className="text-xl">Main Wallet</span>
+          <span className="text-xl">QFS Wallet</span>
         </Link>
       </div>
       <nav className="flex-1 overflow-auto py-4">
@@ -118,13 +120,6 @@ export function AppShell({ children }: { children: ReactNode }) {
         </ul>
       </nav>
       
-      {/* Removed logout button from here as it's in the dropdown menu */}
-      {/* <div className="mt-auto border-t border-sidebar-border p-4">
-        <Button variant="ghost" className="w-full justify-start gap-3 text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-primary" onClick={logout}>
-            <LogOut className="h-5 w-5" />
-            Logout
-        </Button>
-      </div> */}
     </div>
   );
   
@@ -180,4 +175,5 @@ export function AppShell({ children }: { children: ReactNode }) {
     </div>
   );
 }
+
 

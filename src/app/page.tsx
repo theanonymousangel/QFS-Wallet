@@ -22,7 +22,8 @@ export default function HomePage() {
   return (
     <div className="flex h-screen w-full items-center justify-center bg-background">
       <Loader2 className="h-12 w-12 animate-spin text-primary" />
-      <p className="ml-4 text-lg text-foreground">Loading Main Wallet...</p>
+      <p className="ml-4 text-lg text-foreground">Loading QFS Wallet...</p>
     </div>
   );
 }
+
