@@ -62,9 +62,9 @@ export function BalanceDisplay() {
         style={{ position: 'absolute', visibility: 'hidden', height: 'auto', width: 'auto', whiteSpace: 'nowrap' }}
       ></span>
 
-      <Card className="shadow-lg bg-gradient-to-br from-primary/10 to-accent/5 border-primary/20">
+      <Card className="shadow-lg"> {/* Removed gradient and specific border */}
         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-          <CardTitle className="text-sm font-medium text-primary">
+          <CardTitle className="text-sm font-medium text-muted-foreground"> {/* Changed text color to muted-foreground */}
             Current Balance
           </CardTitle>
         </CardHeader>
@@ -76,10 +76,9 @@ export function BalanceDisplay() {
               >
                 {isVisible ? formattedBalance : '••••••••'}
               </div>
-              {/* User's name was previously here and has been removed as per request */}
             </div>
             <Button variant="ghost" size="icon" onClick={() => setIsVisible(!isVisible)} aria-label={isVisible ? "Hide balance" : "Show balance"}>
-              {isVisible ? <EyeOff className="h-5 w-5 text-primary/70" /> : <Eye className="h-5 w-5 text-primary/70" />}
+              {isVisible ? <EyeOff className="h-5 w-5 text-muted-foreground" /> : <Eye className="h-5 w-5 text-muted-foreground" />} {/* Changed icon color to muted-foreground */}
             </Button>
           </div>
         </CardContent>
