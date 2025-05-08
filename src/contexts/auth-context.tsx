@@ -1,6 +1,7 @@
+
 'use client';
 
-import type { User } from '@/lib/types';
+import type { User, Transaction } from '@/lib/types';
 import { ADMIN_CODE } from '@/lib/types';
 import { mockUser, mockTransactions } from '@/lib/mock-data';
 import { useRouter } from 'next/navigation';
@@ -18,13 +19,12 @@ interface AuthContextType {
     addressCity: string;
     addressState: string;
     addressZip: string;
-    // country is already a top-level field in UserData
   }) => Promise<boolean>;
   logout: () => void;
   loading: boolean;
   setUser: Dispatch<SetStateAction<User | null>>;
   updateUserBalance: (newBalance: number, adminCodeInput?: string) => Promise<boolean>;
-  addTransaction: (transaction: Omit<import('@/lib/types').Transaction, 'id' | 'date' | 'status'>) => void;
+  addTransaction: (transaction: Omit<Transaction, 'id' | 'date' | 'status'>) => void;
   updatePendingWithdrawals: (amount: number, operation: 'add' | 'subtract') => void;
 }
 
@@ -141,10 +141,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     if (storedUserObject && email === storedUserObject.email /* && pass === 'password' */) { 
       setUser(storedUserObject); 
       setLoading(false);
-      router.push('/dashboard'); // Redirect to Home page
+      router.push('/dashboard'); 
       return true;
-    } else if (!storedUserObject && email === mockUser.email) { // Fallback to mockUser if no stored user
-        const userToStore = {...mockUser}; // Use a copy
+    } else if (!storedUserObject && email === mockUser.email) { 
+        const userToStore = {...mockUser}; 
         if (userToStore.accountNumber.startsWith('BB-')) {
              userToStore.accountNumber = userToStore.accountNumber.replace('BB-', 'QFS-');
         }
@@ -156,12 +156,11 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
         setUser(userToStore);
         localStorage.setItem('balanceBeamUser', JSON.stringify(userToStore));
-        // Initialize mock transactions in local storage if they don't exist
         if (!localStorage.getItem('userTransactions')) {
           localStorage.setItem('userTransactions', JSON.stringify(mockTransactions));
         }
         setLoading(false);
-        router.push('/dashboard'); // Redirect to Home page
+        router.push('/dashboard'); 
         return true;
     }
     setLoading(false);
@@ -170,12 +169,11 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   const signup = async (userData: Omit<User, 'id' | 'accountNumber' | 'balance' | 'pendingWithdrawals' | 'totalTransactions' | 'creationDate' | 'lastInterestApplied' | 'address'> & { 
     initialBalance: number; 
-    password?: string; // Password will be handled by auth logic, not stored directly
+    password?: string; 
     addressStreet: string;
     addressCity: string;
     addressState: string;
     addressZip: string;
-    // country is a top-level field in UserData
   }): Promise<boolean> => {
     setLoading(true);
     await new Promise(resolve => setTimeout(resolve, 1000));
@@ -184,8 +182,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     
     const newUser: User = {
       ...userDetailsFromOmit, 
-      id: crypto.randomUUID(), // Use crypto.randomUUID for user ID
-      // Generate a professional-looking QFS account number
+      id: crypto.randomUUID(), 
       accountNumber: `QFS-${String(Math.floor(Math.random() * 90000000) + 10000000)}${String(Math.floor(Math.random() * 9000) + 1000)}`,
       balance: initialBalance,
       pendingWithdrawals: 0,
@@ -198,19 +195,19 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         country: userData.country, 
       },
       creationDate: formatISO(new Date()),
-      lastInterestApplied: formatISO(subDays(new Date(),1)), // Set to yesterday to allow immediate first daily interest
+      lastInterestApplied: formatISO(subDays(new Date(),1)), 
     };
     localStorage.setItem('balanceBeamUser', JSON.stringify(newUser));
-    localStorage.setItem('userTransactions', JSON.stringify([])); // Initialize empty transactions for new user
+    localStorage.setItem('userTransactions', JSON.stringify([])); 
     setUser(newUser);
     setLoading(false);
-    router.push('/dashboard'); // Redirect to Home page after signup
+    router.push('/dashboard'); 
     return true;
   };
 
   const logout = () => {
     localStorage.removeItem('balanceBeamUser');
-    localStorage.removeItem('userTransactions'); // Clear transactions on logout
+    localStorage.removeItem('userTransactions'); 
     setUser(null);
     router.push('/login');
   };
@@ -228,32 +225,34 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     return false;
   };
 
-  const addTransaction = (transactionData: Omit<import('@/lib/types').Transaction, 'id' | 'date' | 'status'>) => {
-    setUser(currentUser => {
-      if (!currentUser) return null;
-      const newTransaction: import('@/lib/types').Transaction = {
-        ...transactionData,
-        id: crypto.randomUUID(), // Use crypto.randomUUID() for robust unique ID
-        date: formatISO(new Date()),
-        status: 'Pending', // New withdrawals are pending
-      };
-      // In a real app, you'd post this to a backend. For mock, we update local storage.
-      const storedTransactionsString = localStorage.getItem('userTransactions');
-      let storedTransactions: import('@/lib/types').Transaction[] = [];
-      try {
-        storedTransactions = storedTransactionsString ? JSON.parse(storedTransactionsString) : [];
-        if(!Array.isArray(storedTransactions)) storedTransactions = [];
-      } catch (e) {
-        console.error("Error parsing userTransactions from localStorage", e);
-        storedTransactions = []; // Reset if parsing fails
-      }
+  const addTransaction = (transactionData: Omit<Transaction, 'id' | 'date' | 'status'>) => {
+    const newTransaction: Transaction = {
+      ...transactionData,
+      id: crypto.randomUUID(),
+      date: formatISO(new Date()),
+      status: 'Pending', 
+    };
 
-      storedTransactions.unshift(newTransaction); // Add to the beginning
-      localStorage.setItem('userTransactions', JSON.stringify(storedTransactions));
-      
+    const storedTransactionsString = localStorage.getItem('userTransactions');
+    let currentTransactions: Transaction[] = [];
+    try {
+      const parsed = storedTransactionsString ? JSON.parse(storedTransactionsString) : [];
+      if (Array.isArray(parsed)) {
+        currentTransactions = parsed;
+      }
+    } catch (e) {
+      console.error("Error parsing userTransactions from localStorage", e);
+      // currentTransactions remains empty if parsing fails
+    }
+    
+    currentTransactions.unshift(newTransaction);
+    localStorage.setItem('userTransactions', JSON.stringify(currentTransactions));
+    
+    setUser(prevUser => {
+      if (!prevUser) return null;
       const updatedUser = {
-        ...currentUser,
-        totalTransactions: (currentUser.totalTransactions || 0) + 1,
+        ...prevUser,
+        totalTransactions: (prevUser.totalTransactions || 0) + 1,
       };
       localStorage.setItem('balanceBeamUser', JSON.stringify(updatedUser));
       return updatedUser;
