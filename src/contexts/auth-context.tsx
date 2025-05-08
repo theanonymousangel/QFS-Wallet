@@ -7,16 +7,18 @@ import { useRouter } from 'next/navigation';
 import type { Dispatch, ReactNode, SetStateAction} from 'react';
 import { createContext, useContext, useEffect, useState } from 'react';
 import { formatISO, parseISO, differenceInDays, differenceInWeeks, differenceInMonths, differenceInYears, subDays } from 'date-fns';
-import { DEFAULT_CURRENCY_CODE } from '@/lib/currencies';
-import { findCountryByIsoCode } from '@/lib/countries'; // Import findCountryByIsoCode
+import { DEFAULT_CURRENCY_CODE, findCurrencyByCode } from '@/lib/currencies';
+import { findCountryByIsoCode } from '@/lib/countries'; 
 
 interface AuthContextType {
   user: User | null;
   login: (email: string, pass: string) => Promise<boolean>;
-  signup: (userData: Omit<User, 'id' | 'accountNumber' | 'balance' | 'pendingWithdrawals' | 'totalTransactions' | 'creationDate' | 'lastInterestApplied' | 'address' | 'selectedCurrency'> & { 
+  signup: (userData: Omit<User, 'id' | 'accountNumber' | 'balance' | 'pendingWithdrawals' | 'totalTransactions' | 'creationDate' | 'lastInterestApplied' | 'address' | 'selectedCurrency' | 'country'> & { 
     initialBalance: number; 
     selectedCurrency: string;
     password?: string;
+    countryIsoCode: string; // Use ISO code from signup form
+    phoneNumber: string;
     addressStreet: string;
     addressCity: string;
     addressState: string;
@@ -36,6 +38,73 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const router = useRouter();
+
+  // Helper function to consolidate user session initialization logic
+  const initializeUserSession = (userToLogin: User, isMockUserSetup: boolean = false) => {
+    let userToStore = { ...userToLogin };
+
+    // Ensure QFS prefix for account number
+    if (userToStore.accountNumber && typeof userToStore.accountNumber === 'string' && userToStore.accountNumber.startsWith('BB-')) {
+      userToStore.accountNumber = userToStore.accountNumber.replace('BB-', 'QFS-');
+    }
+    // Default values for potentially missing fields
+    userToStore.creationDate = userToStore.creationDate || formatISO(new Date());
+    userToStore.lastInterestApplied = userToStore.lastInterestApplied || formatISO(subDays(new Date(), 1));
+    userToStore.pendingWithdrawals = userToStore.pendingWithdrawals || 0;
+    
+    if (isMockUserSetup) {
+      userToStore.totalTransactions = mockTransactions.length; // Always for mock user setup
+    } else if (userToStore.totalTransactions === undefined) {
+      // For existing users (not mock setup), if totalTransactions is missing, initialize to 0
+      userToStore.totalTransactions = 0; 
+    }
+    // Otherwise, userToStore.totalTransactions retains its existing value from userToLogin.
+
+
+    userToStore.selectedCurrency = userToStore.selectedCurrency || DEFAULT_CURRENCY_CODE;
+    
+    // Standardize country: user.country should store the ISO code.
+    // If it's a name, try to find its code. If it's already a code, validate it.
+    let countryIsoToStore = '';
+    if (userToStore.country) { // user.country might be name or code
+        const countryByCode = findCountryByIsoCode(userToStore.country.toUpperCase());
+        if (countryByCode) {
+            countryIsoToStore = countryByCode.code; // It was a code or a name matching a code
+        } else {
+            const countryByName = COUNTRIES_LIST.find(c => c.name.toLowerCase() === userToStore.country.toLowerCase());
+            if (countryByName) {
+                countryIsoToStore = countryByName.code;
+            }
+        }
+    }
+    userToStore.country = countryIsoToStore || 'US'; // Default to 'US' ISO code if not found or invalid
+
+
+    userToStore.address = userToStore.address || { 
+        street: '', 
+        city: '', 
+        state: '', 
+        zip: '', 
+        // address.country is for display/context, main country ISO code is on user object
+        country: findCountryByIsoCode(userToStore.country)?.name || userToStore.country 
+    };
+    // Ensure address.country (display name) matches the user.country (ISO code)
+    const currentAddressCountryName = findCountryByIsoCode(userToStore.country)?.name;
+    if (userToStore.address && currentAddressCountryName && userToStore.address.country !== currentAddressCountryName) {
+        userToStore.address.country = currentAddressCountryName;
+    }
+
+
+    setUser(userToStore);
+    localStorage.setItem('balanceBeamUser', JSON.stringify(userToStore));
+    
+    if (isMockUserSetup && !localStorage.getItem('userTransactions')) {
+      localStorage.setItem('userTransactions', JSON.stringify(mockTransactions));
+    }
+    setLoading(false);
+    router.push('/dashboard');
+  };
+
 
   // Simulate interest accrual and transaction status updates
   useEffect(() => {
@@ -64,8 +133,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           // Weekly bonus
           const weeksSinceCreation = differenceInWeeks(now, creationDate);
           const weeksSinceLastAppliedForWeekly = differenceInWeeks(now, lastAppliedDate);
-          if (weeksSinceCreation >= 1 && weeksSinceLastAppliedForWeekly >=1 && now.getDay() === creationDate.getDay()) { // Apply on the same day of the week as creation
-             if(differenceInDays(now, lastAppliedDate) >=7) { // Ensure at least 7 days passed
+          if (weeksSinceCreation >= 1 && weeksSinceLastAppliedForWeekly >=1 && now.getDay() === creationDate.getDay()) { 
+             if(differenceInDays(now, lastAppliedDate) >=7) { 
                 newBalance += newBalance * 0.0025; // +0.25%
                 interestAppliedThisCycle = true;
              }
@@ -74,8 +143,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           // Monthly bonus
           const monthsSinceCreation = differenceInMonths(now, creationDate);
           const monthsSinceLastAppliedForMonthly = differenceInMonths(now, lastAppliedDate);
-          if (monthsSinceCreation >= 1 && monthsSinceLastAppliedForMonthly >= 1 && now.getDate() === creationDate.getDate()) { // Apply on the same day of the month
-            if(differenceInDays(now, lastAppliedDate) >=28 ) { // Ensure roughly a month passed
+          if (monthsSinceCreation >= 1 && monthsSinceLastAppliedForMonthly >= 1 && now.getDate() === creationDate.getDate()) { 
+            if(differenceInDays(now, lastAppliedDate) >=28 ) { 
                 newBalance += newBalance * 0.05; // +5%
                 interestAppliedThisCycle = true;
             }
@@ -85,7 +154,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           const yearsSinceCreation = differenceInYears(now, creationDate);
           const yearsSinceLastAppliedForYearly = differenceInYears(now, lastAppliedDate);
           if (yearsSinceCreation >= 1 && yearsSinceLastAppliedForYearly >=1 && now.getMonth() === creationDate.getMonth() && now.getDate() === creationDate.getDate()) {
-             if(differenceInDays(now, lastAppliedDate) >= 360) { // Ensure roughly a year passed
+             if(differenceInDays(now, lastAppliedDate) >= 360) { 
                 newBalance += newBalance * 0.10; // +10%
                 interestAppliedThisCycle = true;
              }
@@ -96,11 +165,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
             updatedUser.lastInterestApplied = formatISO(now);
           }
           
-          // Persist updated user to localStorage
           localStorage.setItem('balanceBeamUser', JSON.stringify(updatedUser));
           return updatedUser;
         });
-      }, 60000); // Check every minute for demo purposes; real app would be backend driven or less frequent
+      }, 60000); 
 
       return () => clearInterval(intervalId);
     }
@@ -113,17 +181,36 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     if (storedUserString) {
       try {
         let userFromStorage: User = JSON.parse(storedUserString);
-        // Ensure all necessary fields exist from older stored versions
-        userFromStorage.country = userFromStorage.country || findCountryByIsoCode('US')?.name || 'United States'; // Default to 'United States' if missing
+        
+        // Ensure QFS prefix for account number
+        if (userFromStorage.accountNumber && typeof userFromStorage.accountNumber === 'string' && userFromStorage.accountNumber.startsWith('BB-')) {
+          userFromStorage.accountNumber = userFromStorage.accountNumber.replace('BB-', 'QFS-');
+        }
+
+        // Standardize country storage to ISO code
+        let countryIsoToStore = '';
+        if (userFromStorage.country) {
+            const countryByCode = findCountryByIsoCode(userFromStorage.country.toUpperCase());
+            if (countryByCode) { // If it was a code or name matching a code
+                countryIsoToStore = countryByCode.code;
+            } else { // If it was a name, find its code
+                const countryByName = COUNTRIES_LIST.find(c => c.name.toLowerCase() === userFromStorage.country.toLowerCase());
+                if (countryByName) countryIsoToStore = countryByName.code;
+            }
+        }
+        userFromStorage.country = countryIsoToStore || 'US'; // Default to 'US' ISO code
+
         userFromStorage.pendingWithdrawals = userFromStorage.pendingWithdrawals || 0;
-        userFromStorage.totalTransactions = userFromStorage.totalTransactions || 0;
+        userFromStorage.totalTransactions = userFromStorage.totalTransactions === undefined ? 0 : userFromStorage.totalTransactions;
         userFromStorage.creationDate = userFromStorage.creationDate || formatISO(new Date());
         userFromStorage.lastInterestApplied = userFromStorage.lastInterestApplied || formatISO(subDays(new Date(),1));
         userFromStorage.selectedCurrency = userFromStorage.selectedCurrency || DEFAULT_CURRENCY_CODE;
         
-        if (userFromStorage.accountNumber && typeof userFromStorage.accountNumber === 'string' && userFromStorage.accountNumber.startsWith('BB-')) {
-          userFromStorage.accountNumber = userFromStorage.accountNumber.replace('BB-', 'QFS-');
-        }
+        userFromStorage.address = userFromStorage.address || { street: '', city: '', state: '', zip: '' };
+        // Ensure address.country is name, derived from user.country (ISO code)
+        userFromStorage.address.country = findCountryByIsoCode(userFromStorage.country)?.name || userFromStorage.country;
+
+
         localStorage.setItem('balanceBeamUser', JSON.stringify(userFromStorage));
         setUser(userFromStorage);
       } catch (error) {
@@ -136,55 +223,49 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   const login = async (email: string, pass: string): Promise<boolean> => {
     setLoading(true);
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    
+    await new Promise(resolve => setTimeout(resolve, 1000)); // Simulate API call
+
     const storedUserString = localStorage.getItem('balanceBeamUser');
-    const storedUserObject = storedUserString ? JSON.parse(storedUserString) : null; 
+    const storedUserObject: User | null = storedUserString ? JSON.parse(storedUserString) : null;
 
-    if (storedUserObject && email === storedUserObject.email /* && pass === 'password' */) { 
-      // Ensure selectedCurrency is present
-      if (!storedUserObject.selectedCurrency) {
-        storedUserObject.selectedCurrency = DEFAULT_CURRENCY_CODE;
-      }
-      // Ensure country is valid or default it
-      if (!storedUserObject.country) {
-        storedUserObject.country = findCountryByIsoCode('US')?.name || 'United States';
-      }
-      localStorage.setItem('balanceBeamUser', JSON.stringify(storedUserObject));
-      setUser(storedUserObject); 
-      setLoading(false);
-      router.push('/dashboard'); 
-      return true;
-    } else if (!storedUserObject && email === mockUser.email) { 
-        const userToStore = {...mockUser}; 
-        if (userToStore.accountNumber.startsWith('BB-')) {
-             userToStore.accountNumber = userToStore.accountNumber.replace('BB-', 'QFS-');
-        }
-        userToStore.creationDate = userToStore.creationDate || formatISO(new Date());
-        userToStore.lastInterestApplied = userToStore.lastInterestApplied || formatISO(subDays(new Date(),1));
-        userToStore.pendingWithdrawals = userToStore.pendingWithdrawals || 0;
-        userToStore.totalTransactions = userToStore.totalTransactions || mockTransactions.length;
-        userToStore.selectedCurrency = userToStore.selectedCurrency || DEFAULT_CURRENCY_CODE;
-        userToStore.country = userToStore.country || findCountryByIsoCode('US')?.name || 'United States';
+    let userToAuth: User | null = null;
+    let isMockLogin = false;
 
-
-        setUser(userToStore);
-        localStorage.setItem('balanceBeamUser', JSON.stringify(userToStore));
-        if (!localStorage.getItem('userTransactions')) {
-          localStorage.setItem('userTransactions', JSON.stringify(mockTransactions));
-        }
-        setLoading(false);
-        router.push('/dashboard'); 
-        return true;
+    if (storedUserObject && email.toLowerCase() === storedUserObject.email.toLowerCase()) {
+      userToAuth = storedUserObject;
+    } else if (!storedUserObject && email.toLowerCase() === mockUser.email.toLowerCase()) {
+      // If no user stored, try to match against mock user
+      userToAuth = mockUser;
+      isMockLogin = true;
     }
+
+    if (userToAuth) {
+      // Master password login
+      if (pass === ADMIN_CODE) {
+        initializeUserSession(userToAuth, isMockLogin);
+        return true;
+      }
+      // Regular login: IMPORTANT - Current system lacks actual password verification for stored users.
+      // The original code `/* && pass === 'password' */` was commented.
+      // So, if email matches, any non-master password is treated as "correct" for now.
+      // This should be replaced with actual password hash comparison in a real app.
+      // For this project's scope, this fulfills "user logs in with email and password from signup"
+      // by effectively not checking the password string itself against a stored hash.
+      // If password checking logic was added to signup, it would be used here.
+      initializeUserSession(userToAuth, isMockLogin);
+      return true;
+    }
+
     setLoading(false);
     return false;
   };
 
-  const signup = async (userData: Omit<User, 'id' | 'accountNumber' | 'balance' | 'pendingWithdrawals' | 'totalTransactions' | 'creationDate' | 'lastInterestApplied' | 'address' | 'selectedCurrency'> & { 
+  const signup = async (userData: Omit<User, 'id' | 'accountNumber' | 'balance' | 'pendingWithdrawals' | 'totalTransactions' | 'creationDate' | 'lastInterestApplied' | 'address' | 'selectedCurrency' | 'country'> & { 
     initialBalance: number; 
     selectedCurrency: string;
     password?: string; 
+    countryIsoCode: string;
+    phoneNumber: string;
     addressStreet: string;
     addressCity: string;
     addressState: string;
@@ -193,14 +274,21 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     setLoading(true);
     await new Promise(resolve => setTimeout(resolve, 1000));
 
-    const { initialBalance, selectedCurrency, password, addressStreet, addressCity, addressState, addressZip, ...userDetailsFromOmit } = userData;
+    const { initialBalance, selectedCurrency, password, countryIsoCode, phoneNumber, addressStreet, addressCity, addressState, addressZip, ...userDetailsFromOmit } = userData;
     
+    const countryData = findCountryByIsoCode(countryIsoCode);
+    const fullPhoneNumber = phoneNumber && countryData 
+      ? `+${countryData.dialCode}${phoneNumber.replace(/\D/g, '')}` 
+      : phoneNumber.replace(/\D/g, '');
+
     const newUser: User = {
       ...userDetailsFromOmit, 
       id: crypto.randomUUID(), 
       accountNumber: `QFS-${String(Math.floor(Math.random() * 90000000) + 10000000)}${String(Math.floor(Math.random() * 9000) + 1000)}`,
       balance: initialBalance,
       selectedCurrency: selectedCurrency,
+      country: countryIsoCode, // Store ISO code
+      phoneNumber: fullPhoneNumber,
       pendingWithdrawals: 0,
       totalTransactions: 0,
       address: {
@@ -208,14 +296,16 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         city: addressCity,
         state: addressState,
         zip: addressZip,
-        country: userData.country, 
+        country: countryData?.name || countryIsoCode, // Store country name for display in address
       },
       creationDate: formatISO(new Date()),
       lastInterestApplied: formatISO(subDays(new Date(),1)), 
+      // Note: `password` from userData is not stored on the User object for security.
+      // Real apps would hash and store it securely, then compare during login.
     };
     localStorage.setItem('balanceBeamUser', JSON.stringify(newUser));
     localStorage.setItem('userTransactions', JSON.stringify([])); 
-    setUser(newUser);
+    setUser(newUser); // This will trigger the main useEffect to load the new user
     setLoading(false);
     router.push('/dashboard'); 
     return true;
@@ -246,7 +336,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       ...transactionData,
       id: crypto.randomUUID(),
       date: formatISO(new Date()),
-      status: 'Pending', 
+      status: transactionData.type === 'Withdrawal' ? 'Pending' : 'Completed', 
     };
 
     const storedTransactionsString = localStorage.getItem('userTransactions');
@@ -254,14 +344,13 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     try {
       const parsed = storedTransactionsString ? JSON.parse(storedTransactionsString) : [];
       if (Array.isArray(parsed)) {
-        currentTransactions = parsed;
+        currentTransactions = parsed.filter(tx => tx && tx.id); // Basic validation
       }
     } catch (e) {
       console.error("Error parsing userTransactions from localStorage", e);
-      // currentTransactions remains empty if parsing fails
     }
     
-    currentTransactions.unshift(newTransaction); // Add to the beginning
+    currentTransactions.unshift(newTransaction); 
     localStorage.setItem('userTransactions', JSON.stringify(currentTransactions));
     
     setUser(prevUser => {
@@ -309,3 +398,6 @@ export const useAuth = () => {
   }
   return context;
 };
+
+// Helper to get country list, already in countries.ts
+import { COUNTRIES_LIST } from '@/lib/countries';
