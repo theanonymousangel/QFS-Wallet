@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -111,20 +112,20 @@ export default function SettingsPage() {
       
       let userPhoneNumberNational = '';
       if (user.phoneNumber) {
-          const countryForPhone = userCountryData ? findCountryByIsoCode(userCountryData.code) : undefined;
+          const countryForPhone = userCountryData ? findCountryByIsoCode(userCountryData.code) : (user.country && !COUNTRIES_LIST.find(c=> c.name === user.country) ? findCountryByIsoCode(user.country) : undefined);
           if (countryForPhone && user.phoneNumber.startsWith(`+${countryForPhone.dialCode}`)) {
               userPhoneNumberNational = user.phoneNumber.substring(`+${countryForPhone.dialCode}`.length).replace(/\D/g, '');
           } else {
+              // If country code doesn't match or is absent, try to parse it as raw national number
               userPhoneNumberNational = user.phoneNumber.replace(/\D/g, '');
           }
       }
-
 
       form.reset({
         firstName: user.firstName,
         lastName: user.lastName,
         email: user.email,
-        countryIsoCode: userCountryData?.code || '',
+        countryIsoCode: userCountryData?.code || (COUNTRIES_LIST.find(c=> c.code === user.country) ? user.country : ''), // ensure country is an ISO code if it's stored that way
         phoneNumber: userPhoneNumberNational,
         addressStreet: user.address?.street || '',
         addressCity: user.address?.city || '',
@@ -132,7 +133,12 @@ export default function SettingsPage() {
         addressZip: user.address?.zip || '',
         balance: user.balance,
       });
+
       if (userCountryData) setSelectedCountry(userCountryData);
+      else if (user.country && COUNTRIES_LIST.find(c=> c.code === user.country)) {
+        setSelectedCountry(findCountryByIsoCode(user.country));
+      }
+
     }
   }, [user, form]);
 
@@ -188,13 +194,18 @@ export default function SettingsPage() {
       email: data.email,
     };
 
-    if (form.formState.dirtyFields.countryIsoCode || !user.country) {
-      updatedUserFields.country = countryData?.name || user.country;
+    // Update country: use ISO code for storage, name for display in some parts of app
+    // Store ISO code in user.country if it's selected and different
+    if (data.countryIsoCode && (form.formState.dirtyFields.countryIsoCode || user.country !== data.countryIsoCode)) {
+        updatedUserFields.country = data.countryIsoCode;
+    } else if (!data.countryIsoCode && user.country) { // If countryIsoCode is cleared but user had one
+        updatedUserFields.country = ''; // Clear it
     }
+
 
     if (form.formState.dirtyFields.phoneNumber || (!user.phoneNumber && data.phoneNumber)) {
       if (data.phoneNumber && data.phoneNumber.trim().length > 0) {
-        const targetCountryForPhone = countryData || (user.country ? findCountryByIsoCode(COUNTRIES_LIST.find(c => c.name === user.country)?.code || '') : undefined);
+        const targetCountryForPhone = countryData || (user.country ? findCountryByIsoCode(user.country) : undefined);
         if (targetCountryForPhone) {
           updatedUserFields.phoneNumber = `+${targetCountryForPhone.dialCode}${data.phoneNumber.replace(/\D/g, '')}`;
         } else {
@@ -205,16 +216,16 @@ export default function SettingsPage() {
       }
     }
     
-    const addressCountry = (form.formState.dirtyFields.countryIsoCode && countryData)
-                           ? countryData.name 
-                           : (user.address?.country || user.country);
+    // Address country should be the name derived from the selected ISO code
+    const addressCountryName = countryData ? countryData.name : (user.address?.country || (user.country ? findCountryByIsoCode(user.country)?.name : ''));
+
 
     updatedUserFields.address = {
       street: data.addressStreet || '',
       city: data.addressCity || '',
       state: data.addressState || '',
       zip: data.addressZip || '',
-      country: addressCountry || user.country, 
+      country: addressCountryName,
     };
     
     let balanceUpdated = false;
@@ -238,7 +249,8 @@ export default function SettingsPage() {
           form.formState.dirtyFields.addressCity || 
           form.formState.dirtyFields.addressState || 
           form.formState.dirtyFields.addressZip ||
-          form.formState.dirtyFields.countryIsoCode || !prevUser.address ) { // Added check for prevUser.address
+          form.formState.dirtyFields.countryIsoCode || // Check if country changed
+          !prevUser.address ) { 
         userToUpdate.address = updatedUserFields.address;
       }
 
@@ -261,24 +273,26 @@ export default function SettingsPage() {
         form.setValue('password', '');
         form.setValue('confirmPassword', '');
     }
-    // Reset form with new values, keeping dirty state consistent with user object
+    
     const newFormValues = {
-        ...data, // Start with submitted data
-        // Overwrite password fields if they were submitted
+        ...data, 
         password: '', 
         confirmPassword: '',
-        // Ensure national phone number is used for reset
         phoneNumber: data.phoneNumber ? data.phoneNumber.replace(/\D/g, '') : '', 
     };
     
-    if (countryData && newFormValues.phoneNumber) { // if country data and phone number exist
-        const countryDialCode = `+${countryData.dialCode}`;
+    // Retain current country and phone if they were not changed or if they were reset based on country change
+    const finalCountryIsoCodeForReset = data.countryIsoCode || user.country;
+    const countryForPhoneReset = finalCountryIsoCodeForReset ? findCountryByIsoCode(finalCountryIsoCodeForReset) : undefined;
+
+    if (countryForPhoneReset && newFormValues.phoneNumber) {
+        const countryDialCode = `+${countryForPhoneReset.dialCode}`;
         if (newFormValues.phoneNumber.startsWith(countryDialCode)) {
             newFormValues.phoneNumber = newFormValues.phoneNumber.substring(countryDialCode.length);
         }
     }
     
-    form.reset(newFormValues, { keepSubmitSucceeded: true });
+    form.reset(newFormValues, { keepSubmitSucceeded: true, keepDirtyValues: false, keepValues: false });
 
 
   }
@@ -405,7 +419,7 @@ export default function SettingsPage() {
                 name="countryIsoCode" 
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Country</FormLabel>
+                    <FormLabel>Country Code</FormLabel>
                      <Select 
                         onValueChange={(value) => {
                           field.onChange(value);
@@ -415,7 +429,7 @@ export default function SettingsPage() {
                         defaultValue={field.value || ''}>
                       <FormControl>
                         <SelectTrigger>
-                          <SelectValue placeholder="Select country" />
+                          <SelectValue placeholder="Select country code" />
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
@@ -438,7 +452,7 @@ export default function SettingsPage() {
                     <FormLabel>Phone Number</FormLabel>
                     <FormControl>
                       <PhoneNumberInput 
-                        countryIsoCode={selectedCountry?.code || (user.country ? COUNTRIES_LIST.find(c=>c.name === user.country)?.code : '')}
+                        countryIsoCode={selectedCountry?.code || (user.country ? findCountryByIsoCode(user.country)?.code : '')}
                         value={field.value || ''} 
                         onChange={(val) => field.onChange(val)}
                         onBlur={field.onBlur}
@@ -537,4 +551,5 @@ export default function SettingsPage() {
     </div>
   );
 }
+
 
