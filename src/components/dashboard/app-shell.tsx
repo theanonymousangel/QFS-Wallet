@@ -1,4 +1,3 @@
-
 'use client';
 
 import Link from 'next/link';
@@ -25,7 +24,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
 import { cn } from '@/lib/utils';
 import { ThemeToggleButton } from '@/components/theme-toggle-button';
 
@@ -45,16 +44,14 @@ export function AppShell({ children }: { children: ReactNode }) {
   const router = useRouter();
   const currentPath = usePathname();
 
-  // Consolidated useEffect for redirection.
-  // This must be called unconditionally at the top level of the component, before any conditional returns.
+  // This useEffect must be called unconditionally at the top level of the component.
+  // The logic inside can be conditional.
   React.useEffect(() => {
-    if (!loading && !user) {
-      // Ensure router.replace is only called client-side
-      if (typeof window !== 'undefined') {
+    if (!user && !loading && typeof window !== 'undefined') { // Ensure router.replace is only called client-side
         router.replace('/login');
-      }
     }
   }, [user, loading, router]);
+
 
   if (loading) {
     return (
@@ -97,14 +94,23 @@ export function AppShell({ children }: { children: ReactNode }) {
   const userInitials = getInitials(user?.firstName, user?.lastName);
 
 
-  const sidebarContent = (isMobile?: boolean) => (
+  const sidebarContent = (isMobile?: boolean, inSheetContext?: boolean) => (
     <div className="flex h-full flex-col bg-sidebar text-sidebar-foreground">
-      <div className="flex h-16 items-center border-b border-sidebar-border px-6">
-        <Link href="/dashboard" className="flex items-center gap-2 font-semibold text-sidebar-primary">
-          <Gem className="h-7 w-7" />
-          <span className="text-xl">QFS Wallet</span>
-        </Link>
-      </div>
+      {inSheetContext ? (
+        <SheetHeader className="flex h-16 items-center border-b border-sidebar-border px-6 !flex-row !items-center !justify-start !space-y-0 !text-left">
+          <Link href="/dashboard" className="flex items-center gap-2 font-semibold text-sidebar-primary">
+            <Gem className="h-7 w-7" />
+            <SheetTitle className="text-xl text-sidebar-primary">QFS Wallet</SheetTitle>
+          </Link>
+        </SheetHeader>
+      ) : (
+        <div className="flex h-16 items-center border-b border-sidebar-border px-6">
+          <Link href="/dashboard" className="flex items-center gap-2 font-semibold text-sidebar-primary">
+            <Gem className="h-7 w-7" />
+            <span className="text-xl">QFS Wallet</span>
+          </Link>
+        </div>
+      )}
       <nav className="flex-1 overflow-auto py-4">
         <ul className="grid items-start gap-1 px-4 text-sm font-medium">
           {navItems.map((item) => (
@@ -130,7 +136,7 @@ export function AppShell({ children }: { children: ReactNode }) {
   return (
     <div className="grid min-h-screen w-full lg:grid-cols-[280px_1fr]">
       <div className="hidden border-r border-sidebar-border bg-sidebar lg:block">
-        {sidebarContent()}
+        {sidebarContent(false, false)}
       </div>
       <div className="flex flex-col">
         <header className="flex h-16 items-center gap-4 border-b bg-card px-6">
@@ -142,7 +148,7 @@ export function AppShell({ children }: { children: ReactNode }) {
               </Button>
             </SheetTrigger>
             <SheetContent side="left" className="flex flex-col p-0 bg-sidebar text-sidebar-foreground border-sidebar-border w-[280px]">
-              {sidebarContent(true)}
+              {sidebarContent(true, true)}
             </SheetContent>
           </Sheet>
           

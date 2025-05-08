@@ -17,7 +17,7 @@ body {
     --popover: 0 0% 100%; /* #FFFFFF - White */
     --popover-foreground: 0 0% 20%; /* #333333 - Dark Charcoal */
 
-    --primary: 39 100% 50%; /* #FFA000 - Orange-Gold (for buttons) */
+    --primary: 47 100% 49%; /* #FDCB00 - Golden Yellow (buttons) */
     --primary-foreground: 0 0% 100%; /* #FFFFFF - White (text on primary buttons) */
 
     --secondary: 0 0% 88%; /* #E0E0E0 - Light Gray (for less emphasized backgrounds) */
@@ -34,7 +34,7 @@ body {
 
     --border: 0 0% 88%; /* #E0E0E0 - Light Gray (card/input borders) */
     --input: 0 0% 100%; /* #FFFFFF - White input backgrounds */
-    --ring: 45 100% 51%; /* #FFC107 - Golden Amber (focus ring) */
+    --ring: 47 100% 49%; /* #FDCB00 - Golden Yellow (focus ring) */
 
     --chart-1: 45 100% 51%;  /* #FFC107 - Golden Amber */
     --chart-2: 42 100% 50%;  /* #FFB300 - Deeper Gold */
@@ -47,10 +47,10 @@ body {
     /* Sidebar specific colors - Light Theme */
     --sidebar-background: 0 0% 100%; /* #FFFFFF - White */
     --sidebar-foreground: 0 0% 20%; /* #333333 - Dark Charcoal text */
-    --sidebar-primary: 39 100% 50%; /* #FFA000 - Orange-Gold active/primary elements */
+    --sidebar-primary: 47 100% 49%; /* #FDCB00 - Golden Yellow active/primary elements */
     --sidebar-primary-foreground: 0 0% 100%; /* #FFFFFF - White text on primary elements */
     --sidebar-accent: 45 100% 94%; /* #FFF8E1 - Very Light Amber for hover/active items background */
-    --sidebar-accent-foreground: 39 100% 50%; /* #FFA000 - Orange-Gold text on light amber accent background */
+    --sidebar-accent-foreground: 47 100% 49%; /* #FDCB00 - Golden Yellow text on light amber accent background */
     --sidebar-border: 0 0% 88%; /* #E0E0E0 - Light Gray border */
     --sidebar-ring: 45 100% 51%; /* #FFC107 - Golden Amber focus ring */
   }
@@ -65,7 +65,7 @@ body {
     --popover: 0 0% 12%; /* #1E1E1E */
     --popover-foreground: 0 0% 88%; /* #E0E0E0 */
 
-    --primary: 45 100% 51%; /* #FFC107 - Golden Amber (buttons) */
+    --primary: 47 100% 49%; /* #FDCB00 - Golden Yellow (buttons) */
     --primary-foreground: 0 0% 7%; /* #121212 - Dark text on gold buttons */
 
     --secondary: 0 0% 17%; /* #2C2C2C - Lighter Dark Gray for secondary bg */
@@ -82,7 +82,7 @@ body {
 
     --border: 0 0% 20%; /* #333333 - Darker Border */
     --input: 0 0% 12%; /* #1E1E1E - Dark input background */
-    --ring: 45 100% 51%; /* #FFC107 - Focus Ring */
+    --ring: 47 100% 49%; /* #FDCB00 - Focus Ring */
 
     --chart-1: 45 100% 51%;  /* #FFC107 */
     --chart-2: 42 100% 50%;  /* #FFB300 */
@@ -93,7 +93,7 @@ body {
     /* Sidebar specific colors - Dark Theme */
     --sidebar-background: 0 0% 12%; /* #1E1E1E - Dark Gray */
     --sidebar-foreground: 0 0% 88%; /* #E0E0E0 - Light text */
-    --sidebar-primary: 45 100% 51%; /* #FFC107 - Golden Amber */
+    --sidebar-primary: 47 100% 49%; /* #FDCB00 - Golden Yellow */
     --sidebar-primary-foreground: 0 0% 7%; /* #121212 - Dark text on gold */
     --sidebar-accent: 0 0% 17%; /* #2C2C2C - Slightly Lighter Dark Gray for hover BG */
     --sidebar-accent-foreground: 48 100% 65%; /* #FFD54F - Lighter Gold text on hover */
@@ -119,4 +119,18 @@ body {
   /* background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='4' height='4' viewBox='0 0 4 4'%3E%3Cpath fill='%23FFC107' fill-opacity='0.05' d='M1 3h1v1H1V3zm2-2h1v1H3V1z'%3E%3C/path%3E%3C/svg%3E"); */
   /* For auth pages, use a gradient from main background to a muted version of accent or secondary */
    background-image: linear-gradient(to bottom right, hsl(var(--background)), hsl(var(--secondary)));
+}
+
+@layer utilities {
+  .sr-only {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border-width: 0;
+  }
 }
