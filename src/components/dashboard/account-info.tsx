@@ -1,8 +1,9 @@
+// src/components/dashboard/account-info.tsx
 'use client';
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { CreditCard, UserCircle, Copy, Landmark as BankIcon } from 'lucide-react'; // Removed Bitcoin, added CreditCard
+import { CreditCard, UserCircle, Copy, Landmark as BankIcon } from 'lucide-react';
 import { useAuth } from '@/contexts/auth-context';
 import { AppleWalletIcon } from '@/components/icons/apple-wallet-icon';
 import { GoogleWalletIcon } from '@/components/icons/google-wallet-icon';
@@ -25,9 +26,9 @@ export function AccountInfo() {
 
   const connectionOptions = [
     { label: 'Withdraw to Bank', icon: BankIcon, href: '/withdraw' },
-    { label: 'Apple Wallet', icon: AppleWalletIcon, action: () => toast({ title: "Coming Soon!", description: "Apple Wallet integration is under development." }) },
+    { label: 'Withdraw to QFS System Card', icon: CreditCard, href: '/withdraw' },
     { label: 'Google Wallet', icon: GoogleWalletIcon, action: () => toast({ title: "Coming Soon!", description: "Google Wallet integration is under development." }) },
-    { label: 'Withdraw to QFS System Card', icon: CreditCard, href: '/withdraw' }, // Changed label, icon, and action to link
+    { label: 'Apple Wallet', icon: AppleWalletIcon, action: () => toast({ title: "Coming Soon!", description: "Apple Wallet integration is under development." }) },
   ];
 
   return (
