@@ -1,3 +1,4 @@
+
 'use client';
 
 import type { User } from '@/lib/types';
@@ -226,12 +227,21 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       if (!currentUser) return null;
       const newTransaction: import('@/lib/types').Transaction = {
         ...transactionData,
-        id: `txn-${Date.now()}`,
+        id: `txn-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`, // Make ID more unique
         date: formatISO(new Date()),
         status: 'Pending', // New withdrawals are pending
       };
       // In a real app, you'd post this to a backend. For mock, we update local storage.
-      const storedTransactions = JSON.parse(localStorage.getItem('userTransactions') || '[]');
+      const storedTransactionsString = localStorage.getItem('userTransactions');
+      let storedTransactions: import('@/lib/types').Transaction[] = [];
+      try {
+        storedTransactions = storedTransactionsString ? JSON.parse(storedTransactionsString) : [];
+        if(!Array.isArray(storedTransactions)) storedTransactions = [];
+      } catch (e) {
+        console.error("Error parsing userTransactions from localStorage", e);
+        storedTransactions = []; // Reset if parsing fails
+      }
+
       storedTransactions.unshift(newTransaction); // Add to the beginning
       localStorage.setItem('userTransactions', JSON.stringify(storedTransactions));
       
@@ -278,3 +288,4 @@ export const useAuth = () => {
   }
   return context;
 };
+
