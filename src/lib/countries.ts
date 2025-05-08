@@ -15,15 +15,13 @@ export interface Country {
 export const COUNTRIES_LIST: Country[] = [
   { code: 'US', name: 'United States', dialCode: '1', phoneFormat: { maxLength: 10, groups: [3, 3, 4], pattern: '+%CC% (%G1%) %G2%-%G3%' } },
   { code: 'CA', name: 'Canada', dialCode: '1', phoneFormat: { maxLength: 10, groups: [3, 3, 4], pattern: '+%CC% (%G1%) %G2%-%G3%' } },
-  { code: 'GB', name: 'United Kingdom', dialCode: '44', phoneFormat: { maxLength: 10, groups: [4, 3, 3], pattern: '+%CC% (%G1%) %G2%-%G3%' } }, // Example: +44 (7912) 345-678 for a 10-digit mobile
-  { code: 'DE', name: 'Germany', dialCode: '49', phoneFormat: { maxLength: 11, groups: [3, 7, 1], pattern: '+%CC% (%G1%) %G2%%G3%' } }, // Example: +49 (151) 2345-6789 (adjusting pattern for flexible grouping often seen)
-                                                                                                                                    // Simplified pattern for DE: +49 (XXX) XXXXXXXX, or let's use groups [3,8] for 11 digits
-                                                                                                                                    // User wants: +49 (151) 234-56789. groups: [3,3,5]
-  { code: 'JP', name: 'Japan', dialCode: '81', phoneFormat: { maxLength: 10, groups: [2, 4, 4], pattern: '+%CC% %G1%-%G2%-%G3%' } }, // e.g. 090-xxxx-xxxx -> +81 90-xxxx-xxxx
-  { code: 'IN', name: 'India', dialCode: '91', phoneFormat: { maxLength: 10, groups: [5, 5], pattern: '+%CC% %G1% %G2%' } },
-  { code: 'CN', name: 'China', dialCode: '86', phoneFormat: { maxLength: 11, groups: [3, 4, 4], pattern: '+%CC% %G1%-%G2%-%G3%' } },
-  { code: 'BR', name: 'Brazil', dialCode: '55', phoneFormat: { maxLength: 11, groups: [2, 5, 4], pattern: '+%CC% (%G1%) %G2%-%G3%' } }, // For mobiles (XX) XXXXX-XXXX
-  { code: 'ZA', name: 'South Africa', dialCode: '27', phoneFormat: { maxLength: 9, groups: [2, 3, 4], pattern: '+%CC% %G1% %G2% %G3%' } }, // National number is 9 digits (e.g. 82 XXX XXXX)
+  { code: 'GB', name: 'United Kingdom', dialCode: '44', phoneFormat: { maxLength: 10, groups: [4, 3, 3], pattern: '+%CC% (%G1%) %G2%-%G3%' } },
+  { code: 'DE', name: 'Germany', dialCode: '49', phoneFormat: { maxLength: 11, groups: [3, 3, 5], pattern: '+%CC% (%G1%) %G2%-%G3%' } },
+  { code: 'JP', name: 'Japan', dialCode: '81', phoneFormat: { maxLength: 10, groups: [2, 4, 4], pattern: '+%CC% %G1%-%G2%-%G3%' } }, // e.g. +81 90-1234-5678 (national part 9012345678)
+  { code: 'IN', name: 'India', dialCode: '91', phoneFormat: { maxLength: 10, groups: [5, 5], pattern: '+%CC% %G1% %G2%' } }, // e.g. +91 XXXXX XXXXX
+  { code: 'CN', name: 'China', dialCode: '86', phoneFormat: { maxLength: 11, groups: [3, 4, 4], pattern: '+%CC% %G1%-%G2%-%G3%' } }, // e.g. +86 1XX-XXXX-XXXX
+  { code: 'BR', name: 'Brazil', dialCode: '55', phoneFormat: { maxLength: 11, groups: [2, 5, 4], pattern: '+%CC% (%G1%) %G2%-%G3%' } }, // e.g. +55 (XX) XXXXX-XXXX
+  { code: 'ZA', name: 'South Africa', dialCode: '27', phoneFormat: { maxLength: 9, groups: [2, 3, 4], pattern: '+%CC% (%G1%) %G2% %G3%' } }, // e.g. +27 (XX) XXX XXXX
   // Add other countries with their dial codes, even if no specific format is defined yet.
   // Format will fallback or be simpler for these.
   { code: 'AF', name: 'Afghanistan', dialCode: '93' },
@@ -261,15 +259,7 @@ export const COUNTRIES_LIST: Country[] = [
   { code: 'YE', name: 'Yemen', dialCode: '967' },
   { code: 'ZM', name: 'Zambia', dialCode: '260' },
   { code: 'ZW', name: 'Zimbabwe', dialCode: '263' },
-].map(country => {
-  // Correcting specific phone formats based on user examples
-  if (country.code === 'DE') {
-    country.phoneFormat = { maxLength: 11, groups: [3, 3, 5], pattern: '+%CC% (%G1%) %G2%-%G3%' }; // For +49 (151) 234-56789
-  }
-  // Ensure all countries have a defined phoneFormat if they are in the specific list, otherwise, they'll use a default.
-  // For the initial list of 9 specific countries, ensure their formats are exactly as needed for examples.
-  return country;
-});
+];
 
 // A helper function to find a country by its ISO code
 export const findCountryByIsoCode = (isoCode: string): Country | undefined => {

@@ -12,15 +12,16 @@ interface PhoneNumberInputProps extends Omit<React.InputHTMLAttributes<HTMLInput
 }
 
 const applyFormat = (digits: string, country?: Country): string => {
-  if (!country || !country.phoneFormat || !digits && !country.dialCode) { // if no digits and no dialCode, return empty
+  if (!country || !digits && !country.dialCode) {
     return country && country.dialCode ? `+${country.dialCode}` : digits;
   }
-  if (!country || !country.phoneFormat) { // if country but no specific format, just prefix with dialcode
-      return country.dialCode ? `+${country.dialCode} ${digits}`: digits;
+  
+  const { dialCode, phoneFormat } = country;
+
+  if (!phoneFormat) {
+    return `+${dialCode} ${digits}`;
   }
 
-
-  const { dialCode, phoneFormat } = country;
   const { groups, pattern } = phoneFormat;
   
   let nationalNum = digits;
@@ -41,20 +42,21 @@ const applyFormat = (digits: string, country?: Country): string => {
     formatted = formatted.replace(`%G${i + 1}%`, groupsValues[i]);
   }
   
+  // Replace remaining group placeholders with empty strings or a more subtle placeholder character if desired.
+  // For now, just remove them if they are not filled.
   for (let i = groupsValues.length; i < groups.length; i++) {
-    const placeholderRegex = new RegExp(`%G${i + 1}%`, 'g');
-    // More careful replacement to avoid removing separators if group is empty but others exist
-    if (groupsValues.length === 0 && i === 0) { // No groups filled yet, keep first group placeholder visible if pattern expects it
-         formatted = formatted.replace(placeholderRegex, ''); // Or some visual cue like '...'
-    } else {
-        // Remove placeholder and potentially associated separator if it's at the end or makes sense
-        // This regex is simplified, might need refinement based on exact pattern structures
-        formatted = formatted.replace(new RegExp(`[- (]*%G${i+1}%[- )]*`, 'g'), '').trim();
-    }
+    const placeholderRegex = new RegExp(` ?%G${i + 1}%`, 'g'); // Also match preceding space
+    formatted = formatted.replace(placeholderRegex, '');
   }
-  // Remove trailing spaces or hyphens if input is partial and ensure no empty parens
-  formatted = formatted.replace(/[\s-]+$/, '').replace(/\(\s*\)/g, '()').replace(/\(\)/g, '');
-  if (formatted.endsWith('(') && digits.length > 0) formatted = formatted.slice(0,-1).trim();
+  
+  // Clean up trailing separators or empty parentheses
+  formatted = formatted.replace(/[\s-()]+$/, ''); // Remove trailing spaces, hyphens, or parentheses
+  if (formatted.endsWith('(') && nationalNum.length > 0) { // if ends with open paren and has digits
+    formatted = formatted.slice(0, -1).trim();
+  }
+  if (formatted === `+${dialCode} ()` && nationalNum.length === 0) { // Empty like +1 ()
+      formatted = `+${dialCode}`;
+  }
 
 
   return formatted;
@@ -72,12 +74,14 @@ export const PhoneNumberInput = React.forwardRef<HTMLInputElement, PhoneNumberIn
       
       const nationalDigitsFromProp = (value || '').replace(/\D/g, ''); 
       
-      const maxLength = newCountry?.phoneFormat?.maxLength ?? Infinity;
+      const maxLength = newCountry?.phoneFormat?.maxLength ?? 15; // Default max length
       const validNationalDigits = nationalDigitsFromProp.slice(0, maxLength);
       
       setDisplayedValue(applyFormat(validNationalDigits, newCountry));
       
-      if (nationalDigitsFromProp !== validNationalDigits || value !== nationalDigitsFromProp) { 
+      // If the prop value (raw digits) is different from the processed valid digits,
+      // or if the original prop value was not just digits, call onChange to sync.
+      if (value !== validNationalDigits) { 
         onChange(validNationalDigits);
       }
     }, [countryIsoCode, value, onChange]);
@@ -89,9 +93,11 @@ export const PhoneNumberInput = React.forwardRef<HTMLInputElement, PhoneNumberIn
       if (country) {
         const allDigitsInText = currentInputText.replace(/\D/g, ''); 
 
-        if (allDigitsInText.startsWith(country.dialCode)) {
+        if (country.dialCode && allDigitsInText.startsWith(country.dialCode)) {
           newNationalDigits = allDigitsInText.substring(country.dialCode.length);
         } else {
+          // Handle cases where user might delete country code part or types without it
+          // Assume any digits entered are national part if country code not present or partially deleted
           newNationalDigits = allDigitsInText;
         }
       } else {
@@ -103,16 +109,18 @@ export const PhoneNumberInput = React.forwardRef<HTMLInputElement, PhoneNumberIn
         newNationalDigits = newNationalDigits.slice(0, maxLength);
       }
       
-      onChange(newNationalDigits); 
+      onChange(newNationalDigits); // This will trigger the useEffect above to reformat and setDisplayedValue
     };
     
     const handleKeyDown = (event: React.KeyboardEvent<HTMLInputElement>) => {
         const { key, ctrlKey, metaKey } = event;
+        // Allow digits, navigation, backspace, delete, tab, home, end, and Ctrl/Cmd + A/C/V/X/Z
+        // Disallow other characters
         if (
             !(/\d/.test(key) || 
-            ['Backspace', 'Delete', 'ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'Tab', 'Home', 'End', '+', '(', ')', '-',' '].includes(key) || 
+            ['Backspace', 'Delete', 'ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'Tab', 'Home', 'End'].includes(key) || 
             (ctrlKey || metaKey) && ['a', 'c', 'v', 'x', 'z'].includes(key.toLowerCase())) &&
-            key.length === 1 
+            key.length === 1 // Ensure it's a single character entry and not a special key like 'Enter'
         ) {
             event.preventDefault();
         }
@@ -120,15 +128,27 @@ export const PhoneNumberInput = React.forwardRef<HTMLInputElement, PhoneNumberIn
           props.onKeyDown(event);
         }
     };
+    
+    const getPlaceholder = () => {
+        if (!country) return 'Enter phone number';
+        if (country.phoneFormat) {
+            let placeholder = country.phoneFormat.pattern.replace('%CC%', `+${country.dialCode}`);
+            for(let i=0; i < country.phoneFormat.groups.length; i++){
+                placeholder = placeholder.replace(`%G${i+1}%`, 'x'.repeat(country.phoneFormat.groups[i]));
+            }
+            return placeholder;
+        }
+        return `+${country.dialCode} ...`;
+    }
 
     return (
       <Input
         ref={ref}
-        type="tel"
+        type="tel" // Use "tel" for semantic correctness and mobile keyboards
         value={displayedValue}
         onChange={handleChange}
         onKeyDown={handleKeyDown}
-        placeholder={country ? applyFormat('', country).replace(/%G\d%/g, '').replace(/\s*-\s*$/, '').replace(/\(\s*\)/g, '').trim() : 'Enter phone number'}
+        placeholder={getPlaceholder()}
         className={cn(className)}
         {...props}
       />
