@@ -76,9 +76,7 @@ export function BalanceDisplay() {
               >
                 {isVisible ? formattedBalance : '••••••••'}
               </div>
-              <p className="text-xs text-muted-foreground pt-1">
-                {user.firstName} {user.lastName}
-              </p>
+              {/* User's name was previously here and has been removed as per request */}
             </div>
             <Button variant="ghost" size="icon" onClick={() => setIsVisible(!isVisible)} aria-label={isVisible ? "Hide balance" : "Show balance"}>
               {isVisible ? <EyeOff className="h-5 w-5 text-primary/70" /> : <Eye className="h-5 w-5 text-primary/70" />}
@@ -89,3 +87,4 @@ export function BalanceDisplay() {
     </>
   );
 }
+
