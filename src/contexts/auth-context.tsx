@@ -1,4 +1,3 @@
-
 'use client';
 
 import type { ReactNode } from 'react';
@@ -7,7 +6,7 @@ import { useRouter } from 'next/navigation';
 import { mockUser, mockTransactions } from '@/lib/mock-data';
 import type { User, Transaction } from '@/lib/types';
 import { ADMIN_CODE } from '@/lib/types';
-import { formatISO, parseISO, differenceInDays, addDays, addMonths, addYears } from 'date-fns';
+import { formatISO, parseISO, differenceInDays, addDays } from 'date-fns';
 import { findCountryByIsoCode, COUNTRIES_LIST } from '@/lib/countries';
 
 interface AuthContextType {
@@ -41,97 +40,90 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const now = new Date();
     let userToStore = { ...userData };
 
-    // Apply interest logic if not a mock login (initial load)
-    // For actual login/signup, interest calculation should be based on stored lastInterestApplied
     if (!isMockLogin && userToStore.lastInterestApplied) {
         let lastAppliedDate = parseISO(userToStore.lastInterestApplied);
         let balanceChanged = false;
         let newTransactions: Transaction[] = [];
 
-        // Daily interest processing
         while (differenceInDays(now, lastAppliedDate) >= 1) {
             const dailyInterest = userToStore.balance * 0.0018;
-            userToStore.balance += dailyInterest;
-            lastAppliedDate = addDays(lastAppliedDate, 1);
-            userToStore.lastInterestApplied = formatISO(lastAppliedDate);
-            balanceChanged = true;
-            newTransactions.push({
-                id: `txn-${Date.now()}-daily-${Math.random().toString(36).substr(2, 9)}`,
-                date: formatISO(lastAppliedDate),
-                description: 'Daily Interest Applied',
-                amount: dailyInterest,
-                type: 'Income',
-                status: 'Completed',
-            });
-
-            // Weekly bonus check (every 7 days from creation)
-            const daysSinceCreationForWeekly = differenceInDays(lastAppliedDate, parseISO(userToStore.creationDate));
-            if (daysSinceCreationForWeekly > 0 && daysSinceCreationForWeekly % 7 === 0) {
-                const weeklyBonus = userToStore.balance * 0.0025;
-                userToStore.balance += weeklyBonus;
+            if (dailyInterest > 0) { // Only apply if interest is positive
+                userToStore.balance += dailyInterest;
                 balanceChanged = true;
-                 newTransactions.push({
-                    id: `txn-${Date.now()}-weekly-${Math.random().toString(36).substr(2, 9)}`,
-                    date: formatISO(lastAppliedDate),
-                    description: 'Weekly Bonus Applied',
-                    amount: weeklyBonus,
+                newTransactions.push({
+                    id: `txn-${Date.now()}-daily-${Math.random().toString(36).substr(2, 9)}`,
+                    date: formatISO(addDays(lastAppliedDate, 1)), // Interest for the day completed
+                    description: 'Daily Interest Applied',
+                    amount: dailyInterest,
                     type: 'Income',
                     status: 'Completed',
                 });
             }
+            lastAppliedDate = addDays(lastAppliedDate, 1); // Move to the next day
 
-            // Monthly bonus check (every 30 days from creation)
-            const daysSinceCreationForMonthly = differenceInDays(lastAppliedDate, parseISO(userToStore.creationDate));
-            if (daysSinceCreationForMonthly > 0 && daysSinceCreationForMonthly % 30 === 0) {
-                const monthlyBonus = userToStore.balance * 0.05; // 5%
-                userToStore.balance += monthlyBonus;
-                balanceChanged = true;
-                 newTransactions.push({
-                    id: `txn-${Date.now()}-monthly-${Math.random().toString(36).substr(2, 9)}`,
-                    date: formatISO(lastAppliedDate),
-                    description: 'Monthly Bonus Applied',
-                    amount: monthlyBonus,
-                    type: 'Income',
-                    status: 'Completed',
-                });
+            const daysSinceCreation = differenceInDays(lastAppliedDate, parseISO(userToStore.creationDate));
+
+            if (daysSinceCreation > 0 && daysSinceCreation % 7 === 0) {
+                const weeklyBonus = userToStore.balance * 0.0025;
+                 if (weeklyBonus > 0) {
+                    userToStore.balance += weeklyBonus;
+                    balanceChanged = true;
+                    newTransactions.push({
+                        id: `txn-${Date.now()}-weekly-${Math.random().toString(36).substr(2, 9)}`,
+                        date: formatISO(lastAppliedDate),
+                        description: 'Weekly Bonus Applied',
+                        amount: weeklyBonus,
+                        type: 'Income',
+                        status: 'Completed',
+                    });
+                }
+            }
+
+            if (daysSinceCreation > 0 && daysSinceCreation % 30 === 0) {
+                const monthlyBonus = userToStore.balance * 0.05;
+                if (monthlyBonus > 0) {
+                    userToStore.balance += monthlyBonus;
+                    balanceChanged = true;
+                    newTransactions.push({
+                        id: `txn-${Date.now()}-monthly-${Math.random().toString(36).substr(2, 9)}`,
+                        date: formatISO(lastAppliedDate),
+                        description: 'Monthly Bonus Applied',
+                        amount: monthlyBonus,
+                        type: 'Income',
+                        status: 'Completed',
+                    });
+                }
+            }
+            
+            if (daysSinceCreation > 0 && daysSinceCreation % 365 === 0) {
+                const yearlyBonus = userToStore.balance * 0.10;
+                if (yearlyBonus > 0) {
+                    userToStore.balance += yearlyBonus;
+                    balanceChanged = true;
+                    newTransactions.push({
+                        id: `txn-${Date.now()}-yearly-${Math.random().toString(36).substr(2, 9)}`,
+                        date: formatISO(lastAppliedDate),
+                        description: `Yearly Bonus Applied (Year ${Math.floor(daysSinceCreation / 365)})`,
+                        amount: yearlyBonus,
+                        type: 'Income',
+                        status: 'Completed',
+                    });
+                }
             }
         }
         
-        // Yearly bonus check (every 365 days from creation)
-        // This should be checked independently of the daily loop, but use the *current* `now` and `userToStore.creationDate`.
-        // And should consider if it has already been applied this "year" of account existence.
-        // For simplicity, let's assume a more straightforward check for now if a full year has passed since creation and last application.
-        const daysSinceCreationForYearly = differenceInDays(now, parseISO(userToStore.creationDate));
-        const yearsPassed = Math.floor(daysSinceCreationForYearly / 365);
-        const lastYearlyBonusApplicationYear = userToStore.lastInterestApplied ? Math.floor(differenceInDays(parseISO(userToStore.lastInterestApplied), parseISO(userToStore.creationDate)) / 365) : 0;
-
-        if (yearsPassed > lastYearlyBonusApplicationYear) {
-             const yearlyBonus = userToStore.balance * 0.10; // 10%
-             userToStore.balance += yearlyBonus;
-             // Update lastInterestApplied to `now` to signify all bonuses up to this point are done.
-             userToStore.lastInterestApplied = formatISO(now);
-             balanceChanged = true;
-             newTransactions.push({
-                id: `txn-${Date.now()}-yearly-${Math.random().toString(36).substr(2, 9)}`,
-                date: formatISO(now),
-                description: `Yearly Bonus Applied (Year ${yearsPassed})`,
-                amount: yearlyBonus,
-                type: 'Income',
-                status: 'Completed',
-            });
-        }
-
-
         if (balanceChanged) {
             userToStore.balance = parseFloat(userToStore.balance.toFixed(2));
-            // Update lastInterestApplied to `now` only if any interest was applied
-            // If daily loop ran, lastInterestApplied is already updated. If only yearly bonus, it's also updated.
         }
-        
+        userToStore.lastInterestApplied = formatISO(now); // Update to current time after all checks
+
+
         if (newTransactions.length > 0) {
             const storedTransactions = localStorage.getItem('userTransactions');
             let allTransactions: Transaction[] = storedTransactions ? JSON.parse(storedTransactions) : [];
             allTransactions.push(...newTransactions);
+            // Sort all transactions by date descending before storing
+            allTransactions.sort((a, b) => parseISO(b.date).getTime() - parseISO(a.date).getTime());
             localStorage.setItem('userTransactions', JSON.stringify(allTransactions));
             userToStore.totalTransactions = allTransactions.length;
         }
@@ -146,75 +138,65 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     const storedUser = localStorage.getItem('balanceBeamUser');
     if (storedUser) {
-      initializeUserSession(JSON.parse(storedUser), true);
-    } else {
-      // For demo, initialize with mockUser if no user in localStorage
-      // initializeUserSession(mockUser, true); 
-      // localStorage.setItem('userTransactions', JSON.stringify(mockTransactions));
+      initializeUserSession(JSON.parse(storedUser), false); // Process interest on initial load
     }
     setLoading(false);
   }, [initializeUserSession]);
 
-  const login = async (email: string, pass: string, isMock: boolean = false): Promise<boolean> => {
+ const login = async (email: string, pass: string, isMock: boolean = false): Promise<boolean> => {
     setLoading(true);
-    await new Promise(resolve => setTimeout(resolve, 1000)); // Simulate API delay
+    await new Promise(resolve => setTimeout(resolve, 1000));
 
     const storedUserString = localStorage.getItem('balanceBeamUser');
     let userToAuth: User | null = null;
 
     if (storedUserString) {
-        const storedUser: User = JSON.parse(storedUserString);
-        if (storedUser.email.toLowerCase() === email.toLowerCase()) {
-            userToAuth = storedUser;
+        try {
+            const storedUser: User = JSON.parse(storedUserString);
+            if (storedUser.email.toLowerCase() === email.toLowerCase()) {
+                userToAuth = storedUser;
+            }
+        } catch (e) {
+            console.error("Error parsing stored user data:", e);
+            // Potentially clear corrupted data or handle error
         }
     }
     
-    // If trying to log into mockUser and no other user matches email
-    if (!userToAuth && email.toLowerCase() === mockUser.email.toLowerCase()) {
-        userToAuth = mockUser; 
-        // If mockUser is being logged into for the first time (or after clearing storage),
-        // ensure their transactions are also set.
-        if (!localStorage.getItem('userTransactions')) {
-            localStorage.setItem('userTransactions', JSON.stringify(mockTransactions));
-        }
-    }
-
+    // If a user matching the email was found in localStorage
     if (userToAuth) {
-      // Master password login
-      if (pass === ADMIN_CODE) {
-        initializeUserSession(userToAuth, isMock);
-        setLoading(false);
-        return true;
-      }
-      // TODO: Implement actual password verification here if not using master password
-      // For now, if it's not the master password, and we don't have a "real" password check,
-      // consider it a failed login for a specific user if their email was found but pass isn't ADMIN_CODE.
-      // If we want any password to work for the stored/mock user (for testing):
-      // initializeUserSession(userToAuth, isMock); 
-      // setLoading(false);
-      // return true;
+        // Check against the master password OR (TODO: actual password if implemented)
+        // For now, we only have master password check for existing users.
+        // If you had a real password system, it would be: if (pass === ADMIN_CODE || verifyPassword(pass, userToAuth.hashedPassword))
+        if (pass === ADMIN_CODE) { // Master password works for any existing user
+            initializeUserSession(userToAuth, false); // false: process interest for this user
+            setLoading(false);
+            return true;
+        }
+        // If it's not the master password, and assuming no other password check is in place, login fails for this user
+        // This is where you'd add `else if (userToAuth.password === pass)` if storing plain text pass (not recommended)
+        // or `else if (await bcrypt.compare(pass, userToAuth.hashedPassword))` for hashed passwords
+    } else { 
+        // No user found in localStorage for this email. Check against mockUser for initial demo.
+        if (email.toLowerCase() === mockUser.email.toLowerCase() && (pass === "password123" || pass === ADMIN_CODE)) {
+            initializeUserSession(mockUser, true); // true: treat as mock login, don't calc initial interest storm
+             if (!localStorage.getItem('userTransactions')) { // Ensure transactions for mock user
+                localStorage.setItem('userTransactions', JSON.stringify(mockTransactions));
+             }
+            setLoading(false);
+            return true;
+        }
     }
-    
-    // Fallback for demo: if trying to log in with mock user credentials from mock-data.ts
-    // And no user was found in local storage matching that email.
-    // This part is mostly for the very first run or if local storage was cleared.
-    if (email.toLowerCase() === mockUser.email.toLowerCase() && pass === "password123") { // Assuming a generic password for mockUser for initial setup
-        initializeUserSession(mockUser, true); // true for isMock to prevent initial interest calc on this type of "first" login
-        localStorage.setItem('userTransactions', JSON.stringify(mockTransactions));
-        setLoading(false);
-        return true;
-    }
-
 
     setLoading(false);
-    return false;
-  };
+    return false; 
+};
+
 
   const signup = async (userData: Omit<User, 'id' | 'accountNumber' | 'balance' | 'pendingWithdrawals' | 'totalTransactions' | 'creationDate' | 'lastInterestApplied'> & { initialBalance: number, selectedCurrency: string }): Promise<boolean> => {
     setLoading(true);
     await new Promise(resolve => setTimeout(resolve, 1000));
     
-    const countryData = COUNTRIES_LIST.find(c => c.name === userData.country);
+    const countryData = COUNTRIES_LIST.find(c => c.code === userData.countryIsoCode);
     const fullPhoneNumber = userData.phoneNumber && countryData 
         ? `+${countryData.dialCode}${userData.phoneNumber.replace(/\D/g, '')}`
         : (userData.phoneNumber ? userData.phoneNumber.replace(/\D/g, '') : '');
@@ -222,35 +204,37 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     const newUser: User = {
       id: `user-${Date.now()}`,
-      ...userData,
+      firstName: userData.firstName,
+      lastName: userData.lastName,
+      email: userData.email,
+      country: countryData?.code || userData.countryIsoCode, 
       phoneNumber: fullPhoneNumber,
-      country: countryData?.code || userData.country, // Store ISO code if found, else the name provided
       balance: userData.initialBalance,
       pendingWithdrawals: 0,
       totalTransactions: 0,
-      accountNumber: generateQFSAccountNumber(), // Generate QFS Account Number
-      creationDate: formatISO(new Date()),
-      lastInterestApplied: formatISO(new Date()), // Set to now, interest will start from next check
+      accountNumber: generateQFSAccountNumber(),
+      selectedCurrency: userData.selectedCurrency,
       address: {
         street: userData.addressStreet || '',
         city: userData.addressCity || '',
         state: userData.addressState || '',
         zip: userData.addressZip || '',
-        country: countryData?.name || userData.country, // Store country name in address
-      }
+        country: countryData?.name || userData.countryIsoCode, 
+      },
+      creationDate: formatISO(new Date()),
+      lastInterestApplied: formatISO(new Date()), 
     };
-    initializeUserSession(newUser);
-    localStorage.setItem('userTransactions', JSON.stringify([])); // Initialize with empty transactions
+    initializeUserSession(newUser, true); // True for mock: don't apply interest storm on immediate signup
+    localStorage.setItem('userTransactions', JSON.stringify([]));
     setLoading(false);
     return true;
   };
 
   const logout = () => {
     setLoading(true);
-    // Note: Interest calculation should ideally stop or be handled server-side.
-    // For client-side, we just clear the user session.
-    localStorage.removeItem('balanceBeamUser');
-    // localStorage.removeItem('userTransactions'); // Decide if transactions should persist across users or be cleared
+    if(user){ // Persist final state before logout
+        localStorage.setItem('balanceBeamUser', JSON.stringify(user));
+    }
     setUser(null);
     setLoading(false);
     router.push('/login');
@@ -262,21 +246,42 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       
       const newTransaction: Transaction = {
         ...transactionDetails,
-        id: `txn-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`, // More unique ID
+        id: `txn-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
         date: new Date().toISOString(),
-        status: 'Pending', // All new withdrawals are pending
+        status: 'Pending',
       };
 
-      const storedTransactions = localStorage.getItem('userTransactions');
-      let allTransactions: Transaction[] = storedTransactions ? JSON.parse(storedTransactions) : [];
-      allTransactions.unshift(newTransaction); // Add to the beginning
+      const storedTransactionsString = localStorage.getItem('userTransactions');
+      let allTransactions: Transaction[] = storedTransactionsString ? JSON.parse(storedTransactionsString) : [];
+
+      // Robust duplicate check
+      const isPotentiallyDuplicate = allTransactions.some(tx =>
+        tx.type === newTransaction.type &&
+        tx.amount === newTransaction.amount &&
+        tx.description === newTransaction.description && 
+        tx.payoutMethod === newTransaction.payoutMethod &&
+        (
+          (newTransaction.payoutMethodDetails?.accountNumber && tx.payoutMethodDetails?.accountNumber && newTransaction.payoutMethodDetails.accountNumber === tx.payoutMethodDetails.accountNumber) ||
+          (newTransaction.payoutMethodDetails?.iban && tx.payoutMethodDetails?.iban && newTransaction.payoutMethodDetails.iban === tx.payoutMethodDetails.iban) ||
+          (newTransaction.payoutMethodDetails?.memberId && tx.payoutMethodDetails?.memberId && newTransaction.payoutMethodDetails.memberId === tx.payoutMethodDetails.memberId) ||
+          // Fallback if no specific sensitive details are primary for uniqueness in this context
+          (!newTransaction.payoutMethodDetails?.accountNumber && !newTransaction.payoutMethodDetails?.iban && !newTransaction.payoutMethodDetails?.memberId) 
+        ) &&
+        Math.abs(parseISO(newTransaction.date).getTime() - parseISO(tx.date).getTime()) < 5000 // 5 seconds threshold
+      );
+
+      if (isPotentiallyDuplicate) {
+        console.warn('Potential duplicate transaction skipped:', newTransaction);
+        return currentUser; 
+      }
+      
+      allTransactions.unshift(newTransaction);
       localStorage.setItem('userTransactions', JSON.stringify(allTransactions));
       
       const updatedUser = {
         ...currentUser,
-        totalTransactions: currentUser.totalTransactions + 1,
+        totalTransactions: allTransactions.length, // Correctly set based on actual array length
       };
-       // Balance adjustment and pending withdrawal update is handled in WithdrawPage or relevant component
       localStorage.setItem('balanceBeamUser', JSON.stringify(updatedUser));
       return updatedUser;
     });
@@ -291,7 +296,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         
         const updatedUser = {
             ...currentUser,
-            pendingWithdrawals: Math.max(0, newPendingAmount) // Ensure it doesn't go below zero
+            pendingWithdrawals: Math.max(0, parseFloat(newPendingAmount.toFixed(2))) 
         };
         localStorage.setItem('balanceBeamUser', JSON.stringify(updatedUser));
         return updatedUser;
@@ -304,7 +309,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
     setUser(currentUser => {
       if (!currentUser) return null;
-      const updatedUser = { ...currentUser, balance: newBalance };
+      const updatedUser = { ...currentUser, balance: parseFloat(newBalance.toFixed(2)) };
       localStorage.setItem('balanceBeamUser', JSON.stringify(updatedUser));
       return updatedUser;
     });
