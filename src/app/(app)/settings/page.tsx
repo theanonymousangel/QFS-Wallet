@@ -16,6 +16,7 @@ import {
   FormDescription,
 } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
+import { CurrencyInput } from '@/components/ui/currency-input';
 import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -236,17 +237,15 @@ export default function SettingsPage() {
                       )}
                     </FormLabel>
                     <FormControl>
-                      <div className="relative">
-                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">$</span>
-                        <Input 
-                          type="number" 
-                          step="0.01"
-                          {...field} 
-                          className="pl-8 text-lg"
-                          readOnly={!isBalanceEditing}
-                          aria-readonly={!isBalanceEditing}
-                        />
-                      </div>
+                      <CurrencyInput
+                        value={typeof field.value === 'number' ? field.value : 0}
+                        onChange={(val) => field.onChange(val)}
+                        onBlur={field.onBlur}
+                        readOnly={!isBalanceEditing}
+                        aria-readonly={!isBalanceEditing}
+                        className="text-lg"
+                        maxBeforeDecimal={10} // Example: up to 99,999,999,999.99
+                      />
                     </FormControl>
                     {!isBalanceEditing && <FormDescription>Click "Edit" and enter admin code to modify balance.</FormDescription>}
                     {isBalanceEditing && <FormDescription className="text-destructive">Balance editing enabled. Use with caution.</FormDescription>}

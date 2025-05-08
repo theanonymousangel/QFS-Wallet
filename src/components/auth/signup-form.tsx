@@ -17,6 +17,7 @@ import {
   FormMessage,
 } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
+import { CurrencyInput } from '@/components/ui/currency-input';
 import { useAuth } from '@/contexts/auth-context';
 import { useToast } from '@/hooks/use-toast';
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
@@ -241,7 +242,13 @@ export function SignupForm() {
                 <FormItem>
                   <FormLabel>Initial Account Balance</FormLabel>
                   <FormControl>
-                    <Input type="number" placeholder="0.00" {...field} step="0.01" />
+                    <CurrencyInput
+                      placeholder="$0.00"
+                      value={typeof field.value === 'number' ? field.value : 0}
+                      onChange={field.onChange}
+                      onBlur={field.onBlur}
+                      maxBeforeDecimal={10} // Allows up to 99,999,999,999.99
+                    />
                   </FormControl>
                   <FormMessage />
                 </FormItem>

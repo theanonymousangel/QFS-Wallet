@@ -17,6 +17,7 @@ import {
   FormDescription
 } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
+import { CurrencyInput } from '@/components/ui/currency-input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { useAuth } from '@/contexts/auth-context';
@@ -27,7 +28,7 @@ import type { Transaction } from '@/lib/types';
 const amountSchema = z.object({
   amount: z.coerce
     .number()
-    .min(1, { message: 'Amount must be at least $1.' })
+    .min(0.01, { message: 'Amount must be at least $0.01.' }) // Changed min to 0.01 to match CurrencyInput behavior
     .max(25000000, { message: 'Amount cannot exceed $25,000,000.' }),
 });
 
@@ -139,6 +140,14 @@ export default function WithdrawPage() {
       });
       return;
     }
+    if (data.amount === 0) {
+      toast({
+        title: 'Invalid Amount',
+        description: 'Withdrawal amount must be greater than $0.00.',
+        variant: 'destructive',
+      });
+      return;
+    }
     setWithdrawalAmount(data.amount);
     setStep(2);
   }
@@ -222,16 +231,14 @@ export default function WithdrawPage() {
                     <FormItem>
                       <FormLabel className="text-lg">Amount to Withdraw</FormLabel>
                       <FormControl>
-                        <div className="relative">
-                          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">$</span>
-                          <Input 
-                            type="number" 
-                            placeholder="0.00" 
-                            {...field} 
-                            className="pl-8 text-2xl h-16"
-                            step="0.01"
-                          />
-                        </div>
+                        <CurrencyInput
+                          placeholder="$0.00"
+                          value={typeof field.value === 'number' ? field.value : 0}
+                          onChange={(val) => field.onChange(val)} // RHF expects onChange to update with number
+                          onBlur={field.onBlur}
+                          className="text-2xl h-16"
+                          maxBeforeDecimal={8} // Allows up to 25,000,000.00 (8 digits before decimal)
+                        />
                       </FormControl>
                       <FormMessage />
                       <p className="text-sm text-muted-foreground">Max: ${MAX_WITHDRAWAL.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
