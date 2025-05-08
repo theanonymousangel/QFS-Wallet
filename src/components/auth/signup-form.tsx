@@ -34,7 +34,7 @@ const signupFormSchema = z.object({
   email: z.string().email({ message: 'Please enter a valid email.' }),
   password: z.string().min(6, { message: 'Password must be at least 6 characters.' }),
   countryIsoCode: z.string().min(1, { message: 'Country is required.'}), // Storing ISO code
-  phoneNumber: z.string().optional(),
+  phoneNumber: z.string().min(1, { message: 'Phone number is required.' }),
   addressStreet: z.string().min(1, { message: 'Street address is required.' }),
   addressCity: z.string().min(1, { message: 'City is required.' }),
   addressState: z.string().min(1, { message: 'State/Province is required.' }),
@@ -204,7 +204,7 @@ export function SignupForm() {
               name="phoneNumber"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Phone Number (Optional)</FormLabel>
+                  <FormLabel>Phone Number</FormLabel>
                   <FormControl>
                      <PhoneNumberInput 
                         {...field}
