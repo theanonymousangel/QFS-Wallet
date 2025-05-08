@@ -22,11 +22,11 @@ const applyFormat = (digits: string, country?: Country): string => {
   
   let nationalNum = digits;
   let currentPos = 0;
-  const-groupsValues: string[] = [];
+  const groupsValues: string[] = []; // Corrected variable declaration
 
   for (const groupLength of groups) {
     if (currentPos < nationalNum.length) {
-      const-groupsValues.push(nationalNum.substring(currentPos, Math.min(currentPos + groupLength, nationalNum.length)));
+      groupsValues.push(nationalNum.substring(currentPos, Math.min(currentPos + groupLength, nationalNum.length)));
       currentPos += groupLength;
     } else {
       break; 
@@ -43,7 +43,7 @@ const applyFormat = (digits: string, country?: Country): string => {
   
   // Clean up any remaining placeholders if not all groups were filled
   for (let i = groupsValues.length; i < groups.length; i++) {
-    formatted = formatted.replace(`(%G${i+1}%)`, '').replace(`%G${i+1}%-`, '').replace(`%G${i+1}%`, '');
+    formatted = formatted.replace(/ \(%G\d+%\)/, '').replace(/\(%G\d+%\)/, '').replace(/%G\d+%-/, '').replace(/-%G\d+%/, '').replace(/%G\d+%\s/, '').replace(/\s%G\d+%/, '').replace(/%G\d+%/, '');
   }
   // Remove trailing spaces or hyphens if input is partial
   formatted = formatted.replace(/[\s-]+$/, '').replace(/\(\s*\)/, '');
@@ -106,7 +106,7 @@ export const PhoneNumberInput = React.forwardRef<HTMLInputElement, PhoneNumberIn
         // Allow control keys, navigation, backspace, delete, tab, numbers
         if (
             !(/\d/.test(key) || 
-            ['Backspace', 'Delete', 'ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'Tab', 'Home', 'End'].includes(key) ||
+            ['Backspace', 'Delete', 'ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'Tab', 'Home', 'End', '+'].includes(key) || // Allow plus sign
             (ctrlKey || metaKey) && ['a', 'c', 'v', 'x', 'z'].includes(key.toLowerCase())) &&
             key.length === 1 // check for actual typed character keys
         ) {
