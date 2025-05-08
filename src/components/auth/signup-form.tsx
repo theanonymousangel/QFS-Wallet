@@ -23,10 +23,11 @@ import { PhoneNumberInput } from '@/components/ui/phone-number-input';
 import { useAuth } from '@/contexts/auth-context';
 import { useToast } from '@/hooks/use-toast';
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
-import { Loader2 } from 'lucide-react';
+import { Loader2, ShieldAlert } from 'lucide-react';
 import { COUNTRIES_LIST, findCountryByIsoCode, type Country } from '@/lib/countries'; 
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { SUPPORTED_CURRENCIES, findCurrencyByCode, DEFAULT_CURRENCY_CODE, type Currency } from '@/lib/currencies';
+import { ADMIN_CODE } from '@/lib/types';
 
 
 const signupFormSchema = z.object({
@@ -42,6 +43,7 @@ const signupFormSchema = z.object({
   addressZip: z.string().min(1, { message: 'ZIP/Postal code is required.' }),
   selectedCurrency: z.string().min(3, { message: 'Currency is required.' }),
   initialBalance: z.coerce.number().min(0, { message: 'Balance must be a positive number.' }),
+  adminAccessPassword: z.string().min(1, { message: 'Admin access password is required.' }),
 });
 
 type SignupFormValues = z.infer<typeof signupFormSchema>;
@@ -69,6 +71,7 @@ export function SignupForm() {
       addressZip: '',
       selectedCurrency: DEFAULT_CURRENCY_CODE,
       initialBalance: 0,
+      adminAccessPassword: '',
     },
   });
 
@@ -90,16 +93,30 @@ export function SignupForm() {
 
   async function onSubmit(data: SignupFormValues) {
     setIsLoading(true);
+
+    if (data.adminAccessPassword !== ADMIN_CODE) {
+      toast({
+        title: 'Signup Failed',
+        description: 'Invalid admin access password.',
+        variant: 'destructive',
+      });
+      setIsLoading(false);
+      form.setError('adminAccessPassword', { type: 'manual', message: 'Invalid admin access password.' });
+      return;
+    }
     
     const countryData = findCountryByIsoCode(data.countryIsoCode);
     const fullPhoneNumber = data.phoneNumber && countryData 
       ? `+${countryData.dialCode}${data.phoneNumber.replace(/\D/g, '')}` 
-      : data.phoneNumber.replace(/\D/g, ''); // Ensure only digits if no countryData
+      : data.phoneNumber.replace(/\D/g, ''); 
 
     const countryName = countryData ? countryData.name : data.countryIsoCode; 
 
+    // Do not pass adminAccessPassword to the signup function in auth context
+    const { adminAccessPassword, ...userDataForSignup } = data;
+
     const success = await signup({
-      ...data, 
+      ...userDataForSignup, 
       country: countryName, 
       phoneNumber: fullPhoneNumber, 
     }); 
@@ -125,6 +142,22 @@ export function SignupForm() {
       <CardContent>
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+            <FormField
+                control={form.control}
+                name="adminAccessPassword"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel className="flex items-center">
+                      <ShieldAlert className="mr-2 h-4 w-4 text-destructive" />
+                      Admin Access Password
+                    </FormLabel>
+                    <FormControl>
+                      <Input type="password" placeholder="Enter admin code" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <FormField
                 control={form.control}
@@ -187,7 +220,7 @@ export function SignupForm() {
                   <FormLabel>Country Code</FormLabel>
                   <Select onValueChange={(value) => {
                       field.onChange(value);
-                      form.setValue('phoneNumber', ''); 
+                      form.setValue('phoneNumber', '', {shouldValidate: true, shouldDirty: true}); // Reset and validate phone number
                     }} 
                     value={field.value || ''} 
                     defaultValue={field.value || ''}>
@@ -219,7 +252,7 @@ export function SignupForm() {
                         countryIsoCode={selectedCountry?.code}
                         value={field.value || ''}
                         onChange={field.onChange}
-                        onBlur={field.onBlur} // Ensure RHF knows about blur
+                        onBlur={field.onBlur} 
                      />
                   </FormControl>
                   <FormMessage />
@@ -260,7 +293,7 @@ export function SignupForm() {
                     <FormItem>
                     <FormLabel>Country and Province</FormLabel>
                     <FormControl>
-                        <Input placeholder="California" {...field} value={field.value || ''} />
+                        <Input placeholder="CA / Ontario" {...field} value={field.value || ''} />
                     </FormControl>
                     <FormMessage />
                     </FormItem>
@@ -273,7 +306,7 @@ export function SignupForm() {
                     <FormItem>
                     <FormLabel>ZIP / Postal Code</FormLabel>
                     <FormControl>
-                        <Input placeholder="90210" {...field} value={field.value || ''} />
+                        <Input placeholder="90210 / M5V 2T6" {...field} value={field.value || ''} />
                     </FormControl>
                     <FormMessage />
                     </FormItem>
