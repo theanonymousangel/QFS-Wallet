@@ -75,7 +75,7 @@ export function AppShell({ children }: { children: ReactNode }) {
   }
 
   const navItems: NavItem[] = [
-    { href: '/dashboard', label: 'Home', icon: Home }, 
+    { href: '/dashboard', label: 'Dashboard', icon: Home }, 
     { href: '/transactions', label: 'Transactions', icon: ArrowRightLeft },
     { href: '/withdraw', label: 'Withdrawals', icon: Landmark }, 
     { href: '/settings', label: 'Settings', icon: Settings },

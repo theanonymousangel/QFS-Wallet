@@ -106,7 +106,7 @@ export function SignupForm() {
     setIsLoading(false);
 
     if (success) {
-      toast({ title: 'Signup Successful', description: 'Account created. Redirecting to Home...' });
+      toast({ title: 'Signup Successful', description: 'Account created. Redirecting to Dashboard...' });
       router.push('/dashboard'); 
     } else {
       toast({
