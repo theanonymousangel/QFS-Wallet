@@ -1,3 +1,4 @@
+
 'use client';
 
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -150,7 +151,7 @@ export function SignupForm() {
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Country</FormLabel>
-                  <Select onValueChange={field.onChange} defaultValue={field.value}>
+                  <Select onValueChange={field.onChange} value={field.value || ''} defaultValue={field.value || ''}>
                     <FormControl>
                       <SelectTrigger>
                         <SelectValue placeholder="Select country" />
@@ -175,7 +176,7 @@ export function SignupForm() {
                 <FormItem>
                   <FormLabel>Phone Number (Optional)</FormLabel>
                   <FormControl>
-                    <Input placeholder="555-123-4567" {...field} />
+                    <Input placeholder="555-123-4567" {...field} value={field.value || ''} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -188,7 +189,7 @@ export function SignupForm() {
                 <FormItem>
                   <FormLabel>Street Address</FormLabel>
                   <FormControl>
-                    <Input placeholder="123 Main St" {...field} />
+                    <Input placeholder="123 Main St" {...field} value={field.value || ''} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -202,7 +203,7 @@ export function SignupForm() {
                     <FormItem>
                     <FormLabel>City</FormLabel>
                     <FormControl>
-                        <Input placeholder="Anytown" {...field} />
+                        <Input placeholder="Anytown" {...field} value={field.value || ''} />
                     </FormControl>
                     <FormMessage />
                     </FormItem>
@@ -215,7 +216,7 @@ export function SignupForm() {
                     <FormItem>
                     <FormLabel>State / Province</FormLabel>
                     <FormControl>
-                        <Input placeholder="California" {...field} />
+                        <Input placeholder="California" {...field} value={field.value || ''} />
                     </FormControl>
                     <FormMessage />
                     </FormItem>
@@ -228,7 +229,7 @@ export function SignupForm() {
                     <FormItem>
                     <FormLabel>ZIP / Postal Code</FormLabel>
                     <FormControl>
-                        <Input placeholder="90210" {...field} />
+                        <Input placeholder="90210" {...field} value={field.value || ''} />
                     </FormControl>
                     <FormMessage />
                     </FormItem>

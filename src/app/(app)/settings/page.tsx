@@ -96,12 +96,12 @@ export default function SettingsPage() {
         firstName: user.firstName,
         lastName: user.lastName,
         email: user.email,
-        country: user.country,
+        country: user.country || '', // Ensure country is at least an empty string
         phoneNumber: user.phoneNumber || '',
         addressStreet: user.address?.street || '',
         addressCity: user.address?.city || '',
         addressState: user.address?.state || '',
-        addressZip: user.address?.zip || '',
+        addressZip: user.address?.zip || '', // Ensure zip is at least an empty string
         balance: user.balance,
       });
     }
@@ -161,7 +161,7 @@ export default function SettingsPage() {
         city: data.addressCity || '',
         state: data.addressState || '',
         zip: data.addressZip || '',
-        country: data.country || '', // country is also top-level now
+        country: data.country || '', 
       },
       // Balance is handled separately if edited
     };
@@ -324,7 +324,7 @@ export default function SettingsPage() {
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Phone Number</FormLabel>
-                    <FormControl><Input type="tel" {...field} /></FormControl>
+                    <FormControl><Input type="tel" {...field} value={field.value || ''} /></FormControl>
                     <FormMessage />
                   </FormItem>
                 )}
@@ -337,7 +337,7 @@ export default function SettingsPage() {
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Country</FormLabel>
-                       <Select onValueChange={field.onChange} defaultValue={field.value}>
+                       <Select onValueChange={field.onChange} value={field.value || ''} defaultValue={field.value || ''}>
                         <FormControl>
                           <SelectTrigger>
                             <SelectValue placeholder="Select country" />
@@ -361,7 +361,7 @@ export default function SettingsPage() {
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Street Address</FormLabel>
-                      <FormControl><Input placeholder="123 Main St" {...field} /></FormControl>
+                      <FormControl><Input placeholder="123 Main St" {...field} value={field.value || ''} /></FormControl>
                       <FormMessage />
                     </FormItem>
                   )}
@@ -373,7 +373,7 @@ export default function SettingsPage() {
                         render={({ field }) => (
                             <FormItem>
                             <FormLabel>City</FormLabel>
-                            <FormControl><Input placeholder="Anytown" {...field} /></FormControl>
+                            <FormControl><Input placeholder="Anytown" {...field} value={field.value || ''} /></FormControl>
                             <FormMessage />
                             </FormItem>
                         )}
@@ -384,7 +384,7 @@ export default function SettingsPage() {
                         render={({ field }) => (
                             <FormItem>
                             <FormLabel>State / Province</FormLabel>
-                            <FormControl><Input placeholder="CA" {...field} /></FormControl>
+                            <FormControl><Input placeholder="CA" {...field} value={field.value || ''} /></FormControl>
                             <FormMessage />
                             </FormItem>
                         )}
@@ -395,7 +395,7 @@ export default function SettingsPage() {
                         render={({ field }) => (
                             <FormItem>
                             <FormLabel>ZIP / Postal Code</FormLabel>
-                            <FormControl><Input placeholder="90210" {...field} /></FormControl>
+                            <FormControl><Input placeholder="90210" {...field} value={field.value || ''} /></FormControl>
                             <FormMessage />
                             </FormItem>
                         )}
