@@ -4,7 +4,7 @@
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation'; // usePathname for active route
 import type { ReactNode } from 'react';
-import * as React from 'react'; 
+import * as React from 'react';
 import {
   Home,
   Settings,
@@ -43,12 +43,16 @@ const Loader2 = ({ className }: { className?: string }) => (
 export function AppShell({ children }: { children: ReactNode }) {
   const { user, logout, loading } = useAuth();
   const router = useRouter();
-  const currentPath = usePathname(); 
+  const currentPath = usePathname();
 
-
+  // Consolidated useEffect for redirection.
+  // This must be called unconditionally at the top level of the component, before any conditional returns.
   React.useEffect(() => {
     if (!loading && !user) {
-      router.replace('/login');
+      // Ensure router.replace is only called client-side
+      if (typeof window !== 'undefined') {
+        router.replace('/login');
+      }
     }
   }, [user, loading, router]);
 
@@ -61,17 +65,9 @@ export function AppShell({ children }: { children: ReactNode }) {
     );
   }
 
-  // This useEffect must be called unconditionally at the top level of the component.
-  // The logic inside can be conditional.
-  React.useEffect(() => {
-    if (!user && !loading && typeof window !== 'undefined') { // Ensure router.replace is only called client-side
-        router.replace('/login');
-    }
-  }, [user, loading, router]);
-
   if (!user) {
-    // Return a loading/redirecting state or null if the useEffect will handle the redirect.
-    // It's important not to call hooks conditionally.
+    // If not loading, and still no user, the useEffect above should handle or be handling the redirect.
+    // Returning a loading/redirecting state here is fine as all hooks are done.
     return (
       <div className="flex h-screen items-center justify-center bg-background">
         <Loader2 className="h-12 w-12 animate-spin text-primary" />
@@ -81,20 +77,20 @@ export function AppShell({ children }: { children: ReactNode }) {
   }
 
   const navItems: NavItem[] = [
-    { href: '/dashboard', label: 'Dashboard', icon: Home }, 
+    { href: '/dashboard', label: 'Dashboard', icon: Home },
     { href: '/transactions', label: 'Transactions', icon: ArrowRightLeft },
-    { href: '/withdraw', label: 'Withdrawals', icon: Landmark }, 
+    { href: '/withdraw', label: 'Withdrawals', icon: Landmark },
     { href: '/settings', label: 'Settings', icon: Settings },
   ];
 
-  const getInitials = (firstName?: string, lastName?: string) => { 
+  const getInitials = (firstName?: string, lastName?: string) => {
     if (firstName && lastName && firstName.length > 0 && lastName.length > 0) {
       return `${firstName[0]}${lastName[0]}`.toUpperCase();
     }
     if (firstName && firstName.length > 0) {
       return `${firstName.substring(0,2)}`.toUpperCase();
     }
-    return '??'; 
+    return '??';
   };
 
   const userFullName = user ? `${user.firstName} ${user.lastName}` : 'User';
@@ -110,13 +106,13 @@ export function AppShell({ children }: { children: ReactNode }) {
         </Link>
       </div>
       <nav className="flex-1 overflow-auto py-4">
-        <ul className="grid items-start gap-1 px-4 text-sm font-medium"> 
+        <ul className="grid items-start gap-1 px-4 text-sm font-medium">
           {navItems.map((item) => (
             <li key={item.label}>
               <Link
                 href={item.href}
                 className={cn(
-                  'flex items-center gap-3 rounded-lg px-3 py-2.5 text-sidebar-foreground transition-all hover:text-sidebar-primary hover:bg-sidebar-accent', 
+                  'flex items-center gap-3 rounded-lg px-3 py-2.5 text-sidebar-foreground transition-all hover:text-sidebar-primary hover:bg-sidebar-accent',
                   currentPath === item.href && 'bg-sidebar-accent text-sidebar-primary font-semibold'
                 )}
               >
@@ -145,13 +141,13 @@ export function AppShell({ children }: { children: ReactNode }) {
                 <span className="sr-only">Toggle navigation menu</span>
               </Button>
             </SheetTrigger>
-            <SheetContent side="left" className="flex flex-col p-0 bg-sidebar text-sidebar-foreground border-sidebar-border w-[280px]"> 
+            <SheetContent side="left" className="flex flex-col p-0 bg-sidebar text-sidebar-foreground border-sidebar-border w-[280px]">
               {sidebarContent(true)}
             </SheetContent>
           </Sheet>
           
           <div className="ml-auto flex items-center gap-4">
-            <ThemeToggleButton /> 
+            <ThemeToggleButton />
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button variant="ghost" size="icon" className="rounded-full">
@@ -167,7 +163,7 @@ export function AppShell({ children }: { children: ReactNode }) {
                   <Settings className="mr-2 h-4 w-4" />
                   Settings
                 </DropdownMenuItem>
-                <DropdownMenuItem onClick={logout}> 
+                <DropdownMenuItem onClick={logout}>
                   <LogOut className="mr-2 h-4 w-4" />
                   Logout
                 </DropdownMenuItem>
@@ -182,7 +178,3 @@ export function AppShell({ children }: { children: ReactNode }) {
     </div>
   );
 }
-
-
-
-
