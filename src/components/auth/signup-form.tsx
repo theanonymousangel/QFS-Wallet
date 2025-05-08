@@ -34,7 +34,7 @@ const signupFormSchema = z.object({
   lastName: z.string().min(1, { message: 'Last name is required.' }),
   email: z.string().email({ message: 'Please enter a valid email.' }),
   password: z.string().min(6, { message: 'Password must be at least 6 characters.' }),
-  countryIsoCode: z.string().min(1, { message: 'Country is required.'}), 
+  countryIsoCode: z.string().min(1, { message: 'Country code is required.'}), 
   phoneNumber: z.string().min(1, { message: 'Phone number is required.' }),
   addressStreet: z.string().min(1, { message: 'Street address is required.' }),
   addressCity: z.string().min(1, { message: 'City is required.' }),
@@ -184,7 +184,7 @@ export function SignupForm() {
               name="countryIsoCode"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Country</FormLabel>
+                  <FormLabel>Country Code</FormLabel>
                   <Select onValueChange={(value) => {
                       field.onChange(value);
                       form.setValue('phoneNumber', ''); 
@@ -193,7 +193,7 @@ export function SignupForm() {
                     defaultValue={field.value || ''}>
                     <FormControl>
                       <SelectTrigger>
-                        <SelectValue placeholder="Select country" />
+                        <SelectValue placeholder="Select country code" />
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
