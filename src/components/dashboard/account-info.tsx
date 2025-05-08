@@ -2,7 +2,7 @@
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { CreditCard, Bitcoin, UserCircle, Copy, Landmark as BankIcon } from 'lucide-react';
+import { CreditCard, UserCircle, Copy, Landmark as BankIcon } from 'lucide-react'; // Removed Bitcoin, added CreditCard
 import { useAuth } from '@/contexts/auth-context';
 import { AppleWalletIcon } from '@/components/icons/apple-wallet-icon';
 import { GoogleWalletIcon } from '@/components/icons/google-wallet-icon';
@@ -27,7 +27,7 @@ export function AccountInfo() {
     { label: 'Withdraw to Bank', icon: BankIcon, href: '/withdraw' },
     { label: 'Apple Wallet', icon: AppleWalletIcon, action: () => toast({ title: "Coming Soon!", description: "Apple Wallet integration is under development." }) },
     { label: 'Google Wallet', icon: GoogleWalletIcon, action: () => toast({ title: "Coming Soon!", description: "Google Wallet integration is under development." }) },
-    { label: 'Add to Crypto Wallet', icon: Bitcoin, action: () => toast({ title: "Coming Soon!", description: "Crypto Wallet integration is under development." }) },
+    { label: 'Withdraw to QFS System Card', icon: CreditCard, href: '/withdraw' }, // Changed label, icon, and action to link
   ];
 
   return (
