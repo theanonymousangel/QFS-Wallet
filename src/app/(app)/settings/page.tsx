@@ -19,7 +19,7 @@ import {
 import { Input } from '@/components/ui/input';
 import { CurrencyInput } from '@/components/ui/currency-input';
 import { PhoneNumberInput } from '@/components/ui/phone-number-input';
-import { Textarea } from '@/components/ui/textarea';
+// import { Textarea } from '@/components/ui/textarea'; // No longer used here
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { useAuth } from '@/contexts/auth-context';
@@ -40,6 +40,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { COUNTRIES_LIST, findCountryByIsoCode, type Country } from '@/lib/countries';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { findCurrencyByCode, getDefaultCurrency } from '@/lib/currencies';
 
 
 const settingsFormSchema = z.object({
@@ -50,12 +51,12 @@ const settingsFormSchema = z.object({
     message: "Password must be at least 6 characters if provided."
   }),
   confirmPassword: z.string().optional(),
-  phoneNumber: z.string().optional(), // Will store raw national digits
+  phoneNumber: z.string().optional(), 
   addressStreet: z.string().optional(),
   addressCity: z.string().optional(),
   addressState: z.string().optional(),
   addressZip: z.string().optional(),
-  countryIsoCode: z.string().optional(), // Store ISO code
+  countryIsoCode: z.string().optional(), 
   balance: z.coerce.number().min(0, 'Balance cannot be negative.'),
 }).refine(data => data.password === data.confirmPassword, {
   message: "Passwords don't match",
@@ -72,6 +73,8 @@ export default function SettingsPage() {
   const [adminCodeInput, setAdminCodeInput] = useState('');
   const [showAdminCodeDialog, setShowAdminCodeDialog] = useState(false);
   const [selectedCountry, setSelectedCountry] = useState<Country | undefined>(undefined);
+
+  const selectedUserCurrency = user ? (findCurrencyByCode(user.selectedCurrency) || getDefaultCurrency()) : getDefaultCurrency();
 
 
   const form = useForm<SettingsFormValues>({
@@ -177,14 +180,14 @@ export default function SettingsPage() {
       firstName: data.firstName,
       lastName: data.lastName,
       email: data.email,
-      country: countryData?.name || '', // Store full name
+      country: countryData?.name || user.country, // Preserve if not changed
       phoneNumber: fullPhoneNumber,
       address: {
         street: data.addressStreet || '',
         city: data.addressCity || '',
         state: data.addressState || '',
         zip: data.addressZip || '',
-        country: countryData?.name || '', 
+        country: countryData?.name || user.country, 
       },
     };
     
@@ -200,7 +203,16 @@ export default function SettingsPage() {
     
     setUser(prevUser => {
       if (!prevUser) return null;
-      const updatedUser = { ...prevUser, ...updatedUserFields };
+      // Ensure address object exists before spreading
+      const prevAddress = prevUser.address || { street: '', city: '', state: '', zip: '', country: ''};
+      const updatedAddress = { ...prevAddress, ...updatedUserFields.address };
+
+      const updatedUser = { 
+        ...prevUser, 
+        ...updatedUserFields,
+        address: updatedAddress
+      };
+
       if (balanceUpdated) {
         updatedUser.balance = data.balance;
       }
@@ -263,6 +275,7 @@ export default function SettingsPage() {
                         value={typeof field.value === 'number' ? field.value : 0}
                         onChange={(val) => field.onChange(val)}
                         onBlur={field.onBlur}
+                        currencySymbol={selectedUserCurrency.symbol}
                         readOnly={!isBalanceEditing}
                         aria-readonly={!isBalanceEditing}
                         className="text-lg"
@@ -341,14 +354,14 @@ export default function SettingsPage() {
               
               <FormField
                 control={form.control}
-                name="countryIsoCode" // Changed from 'country' to 'countryIsoCode'
+                name="countryIsoCode" 
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Country</FormLabel>
                      <Select 
                         onValueChange={(value) => {
                           field.onChange(value);
-                          form.setValue('phoneNumber', ''); // Reset phone number when country changes
+                          form.setValue('phoneNumber', ''); 
                         }} 
                         value={field.value || ''} 
                         defaultValue={field.value || ''}>

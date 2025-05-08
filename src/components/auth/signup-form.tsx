@@ -26,6 +26,7 @@ import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/componen
 import { Loader2 } from 'lucide-react';
 import { COUNTRIES_LIST, findCountryByIsoCode, type Country } from '@/lib/countries'; 
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { SUPPORTED_CURRENCIES, findCurrencyByCode, DEFAULT_CURRENCY_CODE, type Currency } from '@/lib/currencies';
 
 
 const signupFormSchema = z.object({
@@ -39,6 +40,7 @@ const signupFormSchema = z.object({
   addressCity: z.string().min(1, { message: 'City is required.' }),
   addressState: z.string().min(1, { message: 'State/Province is required.' }),
   addressZip: z.string().min(1, { message: 'ZIP/Postal code is required.' }),
+  selectedCurrency: z.string().min(3, { message: 'Currency is required.' }),
   initialBalance: z.coerce.number().min(0, { message: 'Balance must be a positive number.' }),
 });
 
@@ -50,6 +52,7 @@ export function SignupForm() {
   const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(false);
   const [selectedCountry, setSelectedCountry] = useState<Country | undefined>(undefined);
+  const [selectedCurrencySymbol, setSelectedCurrencySymbol] = useState<string>(findCurrencyByCode(DEFAULT_CURRENCY_CODE)?.symbol || '$');
 
   const form = useForm<SignupFormValues>({
     resolver: zodResolver(signupFormSchema),
@@ -64,11 +67,13 @@ export function SignupForm() {
       addressCity: '',
       addressState: '',
       addressZip: '',
+      selectedCurrency: DEFAULT_CURRENCY_CODE,
       initialBalance: 0,
     },
   });
 
   const watchedCountryIsoCode = form.watch('countryIsoCode');
+  const watchedCurrencyCode = form.watch('selectedCurrency');
 
   useEffect(() => {
     if (watchedCountryIsoCode) {
@@ -78,21 +83,25 @@ export function SignupForm() {
     }
   }, [watchedCountryIsoCode]);
 
+  useEffect(() => {
+    const currency = findCurrencyByCode(watchedCurrencyCode);
+    setSelectedCurrencySymbol(currency?.symbol || (findCurrencyByCode(DEFAULT_CURRENCY_CODE)?.symbol || '$'));
+  }, [watchedCurrencyCode]);
+
   async function onSubmit(data: SignupFormValues) {
     setIsLoading(true);
     
-    // Construct the full phone number with country code before sending to signup
     const countryData = findCountryByIsoCode(data.countryIsoCode);
     const fullPhoneNumber = data.phoneNumber && countryData 
       ? `+${countryData.dialCode}${data.phoneNumber.replace(/\D/g, '')}` 
-      : data.phoneNumber; // Fallback or if no country data
+      : data.phoneNumber; 
 
-    const countryName = countryData ? countryData.name : data.countryIsoCode; // Send full country name
+    const countryName = countryData ? countryData.name : data.countryIsoCode; 
 
     const success = await signup({
-      ...data,
-      country: countryName, // Use the full country name
-      phoneNumber: fullPhoneNumber, // Use the potentially prefixed phone number
+      ...data, // includes firstName, lastName, email, selectedCurrency, initialBalance etc.
+      country: countryName, 
+      phoneNumber: fullPhoneNumber, 
     }); 
     setIsLoading(false);
 
@@ -178,7 +187,7 @@ export function SignupForm() {
                   <FormLabel>Country</FormLabel>
                   <Select onValueChange={(value) => {
                       field.onChange(value);
-                      form.setValue('phoneNumber', ''); // Reset phone number when country changes
+                      form.setValue('phoneNumber', ''); 
                     }} 
                     value={field.value || ''} 
                     defaultValue={field.value || ''}>
@@ -271,6 +280,32 @@ export function SignupForm() {
                 )}
                 />
             </div>
+
+            <FormField
+              control={form.control}
+              name="selectedCurrency"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Account Currency</FormLabel>
+                  <Select onValueChange={field.onChange} defaultValue={field.value}>
+                    <FormControl>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select currency" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      {SUPPORTED_CURRENCIES.map((currency) => (
+                        <SelectItem key={currency.code} value={currency.code}>
+                          {currency.name} ({currency.symbol})
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
             <FormField
               control={form.control}
               name="initialBalance"
@@ -279,10 +314,11 @@ export function SignupForm() {
                   <FormLabel>Initial Account Balance</FormLabel>
                   <FormControl>
                     <CurrencyInput
-                      placeholder="$0.00"
+                      placeholder={`${selectedCurrencySymbol}0.00`}
                       value={typeof field.value === 'number' ? field.value : 0}
                       onChange={field.onChange}
                       onBlur={field.onBlur}
+                      currencySymbol={selectedCurrencySymbol}
                       maxBeforeDecimal={10} 
                     />
                   </FormControl>

@@ -1,29 +1,33 @@
+
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Eye, EyeOff } from 'lucide-react'; // Removed UserCircle import
+import { Eye, EyeOff } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/contexts/auth-context';
+import { findCurrencyByCode, getDefaultCurrency } from '@/lib/currencies';
 
 export function BalanceDisplay() {
   const { user } = useAuth();
   const [isVisible, setIsVisible] = useState(true);
-  const [currentFontSize, setCurrentFontSize] = useState('text-3xl'); // Default Tailwind class
+  const [currentFontSize, setCurrentFontSize] = useState('text-3xl'); 
 
   const balanceContainerRef = useRef<HTMLDivElement>(null);
   const measuringSpanRef = useRef<HTMLSpanElement>(null);
 
   if (!user) return null;
 
-  const formattedBalance = new Intl.NumberFormat('en-US', {
+  const selectedUserCurrency = findCurrencyByCode(user.selectedCurrency) || getDefaultCurrency();
+
+  const formattedBalance = new Intl.NumberFormat('en-US', { // 'en-US' for number formatting style
     style: 'currency',
-    currency: 'USD',
+    currency: selectedUserCurrency.code, // Use the user's selected currency code
+    currencyDisplay: 'symbol', // Ensure symbol is used
   }).format(user.balance);
 
   useEffect(() => {
     if (!isVisible) {
-      // For '••••••••', default size is likely fine.
       setCurrentFontSize('text-3xl');
       return;
     }
@@ -32,34 +36,29 @@ export function BalanceDisplay() {
       const measureEl = measuringSpanRef.current;
       const containerEl = balanceContainerRef.current;
       
-      // Set the text to be measured on the hidden span
       measureEl.textContent = formattedBalance;
 
       const availableSizes = ['text-3xl', 'text-2xl', 'text-xl', 'text-lg', 'text-base'];
-      // Default to the smallest size if no other size fits.
       let newOptimalSize = availableSizes[availableSizes.length - 1]; 
 
       for (const sizeClass of availableSizes) {
-        // Apply relevant classes for accurate measurement.
-        // Ensure only one size class is active.
         measureEl.className = `font-bold whitespace-nowrap ${sizeClass}`;
         
         if (measureEl.scrollWidth <= containerEl.clientWidth) {
-          newOptimalSize = sizeClass; // This is the largest size that fits
+          newOptimalSize = sizeClass; 
           break; 
         }
       }
       setCurrentFontSize(newOptimalSize);
     }
-  }, [user.balance, isVisible, formattedBalance]);
+  }, [user.balance, isVisible, formattedBalance, user.selectedCurrency]);
 
 
   return (
     <>
-      {/* Hidden span for measurements */}
       <span 
         ref={measuringSpanRef} 
-        className="font-bold" // Ensure font-weight matches for accurate measurement
+        className="font-bold" 
         style={{ position: 'absolute', visibility: 'hidden', height: 'auto', width: 'auto', whiteSpace: 'nowrap' }}
       ></span>
 
@@ -68,13 +67,12 @@ export function BalanceDisplay() {
           <CardTitle className="text-sm font-medium text-primary">
             Current Balance
           </CardTitle>
-          {/* <UserCircle className="h-5 w-5 text-primary/70" /> Removed icon */}
         </CardHeader>
         <CardContent>
           <div className="flex items-center justify-between">
-            <div ref={balanceContainerRef} className="min-w-0 flex-1"> {/* Ensure container can shrink and provides width for measurement */}
+            <div ref={balanceContainerRef} className="min-w-0 flex-1"> 
               <div 
-                className={`font-bold text-foreground whitespace-nowrap ${currentFontSize} truncate`} // Added truncate as a final fallback
+                className={`font-bold text-foreground whitespace-nowrap ${currentFontSize} truncate`}
               >
                 {isVisible ? formattedBalance : '••••••••'}
               </div>

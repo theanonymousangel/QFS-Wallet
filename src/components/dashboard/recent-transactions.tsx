@@ -1,18 +1,22 @@
+
 'use client';
 
 import Link from 'next/link';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { ArrowRightLeft, ArrowUpRight, ArrowDownLeft, Landmark, DollarSign } from 'lucide-react'; // Added DollarSign for other types
+import { ArrowRightLeft, ArrowUpRight, ArrowDownLeft, Landmark, DollarSign } from 'lucide-react';
 import type { Transaction } from '@/lib/types';
 import { cn } from '@/lib/utils';
 import { format, parseISO } from 'date-fns';
 import { useEffect, useState } from 'react';
 import { useAuth } from '@/contexts/auth-context';
+import { findCurrencyByCode, getDefaultCurrency } from '@/lib/currencies';
 
 export function RecentTransactions() {
   const { user } = useAuth();
   const [recentTransactions, setRecentTransactions] = useState<Transaction[]>([]);
+
+  const selectedUserCurrency = user ? (findCurrencyByCode(user.selectedCurrency) || getDefaultCurrency()) : getDefaultCurrency();
 
   useEffect(() => {
     const storedTransactions = localStorage.getItem('userTransactions');
@@ -35,13 +39,11 @@ export function RecentTransactions() {
             try {
               return parseISO(b.date).getTime() - parseISO(a.date).getTime();
             } catch (e) {
-              // console.error("Error parsing date for sorting transactions", e, a, b);
-              return 0; // Keep original order or put problematic items at end
+              return 0; 
             }
           })
           .slice(0, 3);
         
-        // Deduplicate the final list of 3 (or fewer) items to ensure unique keys for React
         const finalUniqueTransactions = Array.from(new Map(sortedTransactions.map(item => [item.id, item])).values());
         setRecentTransactions(finalUniqueTransactions);
 
@@ -52,14 +54,14 @@ export function RecentTransactions() {
     } else {
       setRecentTransactions([]);
     }
-  }, [user?.totalTransactions]); // Re-run when totalTransactions changes or user object itself changes
+  }, [user?.totalTransactions]); 
 
   const getTransactionIcon = (type: Transaction['type']) => {
     switch (type) {
       case 'Income':
         return <ArrowUpRight className="h-5 w-5 text-green-500" />;
       case 'Deposit':
-        return <DollarSign className="h-5 w-5 text-green-500" />; // Using DollarSign for Deposit as in image example
+        return <DollarSign className="h-5 w-5 text-green-500" />; 
       case 'Expense':
         return <ArrowDownLeft className="h-5 w-5 text-red-500" />;
       case 'Withdrawal':
@@ -70,7 +72,11 @@ export function RecentTransactions() {
   };
 
   const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(amount);
+    return new Intl.NumberFormat('en-US', { 
+      style: 'currency', 
+      currency: selectedUserCurrency.code,
+      currencyDisplay: 'symbol',
+    }).format(amount);
   };
 
 
@@ -120,4 +126,3 @@ export function RecentTransactions() {
     </Card>
   );
 }
-

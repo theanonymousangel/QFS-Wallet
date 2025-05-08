@@ -1,3 +1,4 @@
+
 'use client';
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -6,6 +7,7 @@ import type { IncomeData } from '@/lib/types';
 import { useAuth } from '@/contexts/auth-context';
 import { useEffect, useState } from 'react';
 import { parseISO, differenceInDays } from 'date-fns';
+import { findCurrencyByCode, getDefaultCurrency } from '@/lib/currencies';
 
 const incomePeriods = [
   { title: 'Daily Income', key: 'daily', icon: DollarSign, description: "Based on recent activity" },
@@ -23,6 +25,9 @@ export function IncomeOverview() {
     monthly: 0,
     yearly: 0,
   });
+  
+  const selectedUserCurrency = user ? (findCurrencyByCode(user.selectedCurrency) || getDefaultCurrency()) : getDefaultCurrency();
+
 
   useEffect(() => {
     if (user && user.balance > 0) {
@@ -30,24 +35,19 @@ export function IncomeOverview() {
       const creationDate = parseISO(user.creationDate);
       const today = new Date();
 
-      // Daily interest calculation
       const daily = currentBalance * 0.0018;
-
-      // Weekly bonus calculation potential
       let weekly = 0;
-      if (differenceInDays(today, creationDate) >= 6) { // Check if it's been at least a week (6 full days passed)
+      if (differenceInDays(today, creationDate) >= 6) { 
          weekly = currentBalance * 0.0025;
       }
       
-      // Monthly bonus calculation potential
       let monthly = 0;
-      if (differenceInDays(today, creationDate) >= 29) { // Check if it's been at least a month (29 full days passed)
+      if (differenceInDays(today, creationDate) >= 29) { 
          monthly = currentBalance * 0.05;
       }
 
-      // Yearly bonus calculation potential
       let yearly = 0;
-      if (differenceInDays(today, creationDate) >= 364) { // Check if it's been at least a year
+      if (differenceInDays(today, creationDate) >= 364) { 
          yearly = currentBalance * 0.10;
       }
 
@@ -64,7 +64,11 @@ export function IncomeOverview() {
 
 
   const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(amount);
+    return new Intl.NumberFormat('en-US', { 
+      style: 'currency', 
+      currency: selectedUserCurrency.code,
+      currencyDisplay: 'symbol',
+    }).format(amount);
   };
 
   return (

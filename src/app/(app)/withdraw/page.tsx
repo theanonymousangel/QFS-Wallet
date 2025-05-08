@@ -25,12 +25,13 @@ import { useAuth } from '@/contexts/auth-context';
 import { useToast } from '@/hooks/use-toast';
 import { Loader2, Banknote, CreditCard, User, Mail, Phone, HomeIcon as LucideHomeIcon, Milestone, Info } from 'lucide-react';
 import type { Transaction } from '@/lib/types';
+import { findCurrencyByCode, getDefaultCurrency } from '@/lib/currencies';
 
 const amountSchema = z.object({
   amount: z.coerce
     .number()
-    .min(0.01, { message: 'Amount must be at least $0.01.' }) // Changed min to 0.01 to match CurrencyInput behavior
-    .max(25000000, { message: 'Amount cannot exceed $25,000,000.' }),
+    .min(0.01, { message: 'Amount must be at least 0.01.' })
+    .max(25000000, { message: 'Amount cannot exceed 25,000,000.' }),
 });
 
 const detailsSchema = z.object({
@@ -42,13 +43,10 @@ const detailsSchema = z.object({
   state: z.string().min(1, "State/Province is required."),
   zipCode: z.string().min(1, "ZIP/Postal code is required."),
   payoutMethod: z.enum(['Bank Transfer', 'QFS System Card'], { required_error: "Please select a payout method."}),
-  // Bank Transfer - US
   accountNumberUS: z.string().optional(),
   routingNumberUS: z.string().optional(),
-  // Bank Transfer - International
   ibanINTL: z.string().optional(),
   swiftCodeINTL: z.string().optional(),
-  // QFS System Card
   memberIdQFS: z.string().optional(),
   patriotNumberQFS: z.string().optional(),
 }).superRefine((data, ctx) => {
@@ -82,8 +80,10 @@ export default function WithdrawPage() {
   const { user, setUser, addTransaction, updatePendingWithdrawals } = useAuth();
   const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(false);
-  const [step, setStep] = useState(1); // 1: Amount, 2: Details, 3: Confirm (conceptually)
+  const [step, setStep] = useState(1); 
   const [withdrawalAmount, setWithdrawalAmount] = useState(0);
+  
+  const selectedUserCurrency = user ? (findCurrencyByCode(user.selectedCurrency) || getDefaultCurrency()) : getDefaultCurrency();
 
   const amountForm = useForm<AmountFormValues>({
     resolver: zodResolver(amountSchema),
@@ -120,7 +120,7 @@ export default function WithdrawPage() {
         city: user.address?.city || '',
         state: user.address?.state || '',
         zipCode: user.address?.zip || '',
-        payoutMethod: detailsForm.getValues('payoutMethod') || undefined, // Preserve selected payout method or reset
+        payoutMethod: detailsForm.getValues('payoutMethod') || undefined, 
         accountNumberUS: detailsForm.getValues('accountNumberUS') || '',
         routingNumberUS: detailsForm.getValues('routingNumberUS') || '',
         ibanINTL: detailsForm.getValues('ibanINTL') || '',
@@ -138,11 +138,22 @@ export default function WithdrawPage() {
   
   const currentPayoutMethod = detailsForm.watch('payoutMethod');
 
+  const formatCurrencyDisplay = (amount: number) => {
+    return new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency: selectedUserCurrency.code,
+      currencyDisplay: 'symbol',
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    }).format(amount);
+  };
+
+
   async function onAmountSubmit(data: AmountFormValues) {
     if (data.amount > user!.balance) {
       toast({
         title: 'Insufficient Balance',
-        description: `You do not have enough funds for this withdrawal. Your balance is $${user!.balance.toLocaleString()}.`,
+        description: `You do not have enough funds for this withdrawal. Your balance is ${formatCurrencyDisplay(user!.balance)}.`,
         variant: 'destructive',
       });
       return;
@@ -150,7 +161,7 @@ export default function WithdrawPage() {
     if (data.amount === 0) {
       toast({
         title: 'Invalid Amount',
-        description: 'Withdrawal amount must be greater than $0.00.',
+        description: `Withdrawal amount must be greater than ${formatCurrencyDisplay(0)}.`,
         variant: 'destructive',
       });
       return;
@@ -161,18 +172,15 @@ export default function WithdrawPage() {
 
   async function onDetailsSubmit(data: DetailsFormValues) {
     setIsLoading(true);
-    // Simulate API call for withdrawal processing and admin notification
     await new Promise(resolve => setTimeout(resolve, 1500));
 
-    // Update user balance and pending withdrawals locally
     const newBalance = user.balance - withdrawalAmount;
     setUser(prevUser => prevUser ? {...prevUser, balance: newBalance } : null);
     updatePendingWithdrawals(withdrawalAmount, 'add');
     
-    // Create transaction record
     const transactionDetails: Omit<Transaction, 'id' | 'date' | 'status'> = {
       description: `Withdrawal via ${data.payoutMethod}`,
-      amount: -withdrawalAmount, // Negative for withdrawal
+      amount: -withdrawalAmount, 
       type: 'Withdrawal',
       payoutMethod: data.payoutMethod,
       payoutMethodDetails: {
@@ -196,17 +204,16 @@ export default function WithdrawPage() {
     };
     addTransaction(transactionDetails);
     
-    // Simulate Admin Notification
     console.log("ADMIN NOTIFICATION (Simulated): Withdrawal Request", {
         amount: withdrawalAmount,
+        currency: selectedUserCurrency.code,
         userDetails: data,
     });
-    // In a real app, send an email, push to a backend queue, or call a webhook.
 
     setIsLoading(false);
     toast({
       title: 'Withdrawal Confirmed',
-      description: `Withdrawal of $${withdrawalAmount.toLocaleString()} initiated via ${data.payoutMethod}. It is now pending.`,
+      description: `Withdrawal of ${formatCurrencyDisplay(withdrawalAmount)} initiated via ${data.payoutMethod}. It is now pending.`,
     });
     router.push('/dashboard'); 
   }
@@ -216,11 +223,11 @@ export default function WithdrawPage() {
     <div className="space-y-6 flex flex-col items-center">
       <h1 className="text-3xl font-bold tracking-tight text-foreground text-center">Withdraw Funds</h1>
       
-      <Card className="shadow-lg w-full max-w-2xl"> {/* Centered and max-width */}
+      <Card className="shadow-lg w-full max-w-2xl">
         <CardHeader>
           <CardTitle>
             {step === 1 && "Step 1: Enter Amount"}
-            {step === 2 && `Step 2: Withdrawal Details for $${withdrawalAmount.toLocaleString()}`}
+            {step === 2 && `Step 2: Withdrawal Details for ${formatCurrencyDisplay(withdrawalAmount)}`}
           </CardTitle>
           <CardDescription>
             {step === 1 && "Enter the amount you wish to withdraw."}
@@ -239,18 +246,19 @@ export default function WithdrawPage() {
                       <FormLabel className="text-lg">Amount to Withdraw</FormLabel>
                       <FormControl>
                         <CurrencyInput
-                          placeholder="$0.00"
+                          placeholder={`${selectedUserCurrency.symbol}0.00`}
                           value={typeof field.value === 'number' ? field.value : 0}
-                          onChange={(val) => field.onChange(val)} // RHF expects onChange to update with number
+                          onChange={(val) => field.onChange(val)}
                           onBlur={field.onBlur}
+                          currencySymbol={selectedUserCurrency.symbol}
                           className="text-2xl h-16"
-                          maxBeforeDecimal={8} // Allows up to 25,000,000.00 (8 digits before decimal)
+                          maxBeforeDecimal={8} 
                         />
                       </FormControl>
                       <FormMessage />
-                      <p className="text-sm text-muted-foreground">Max: ${MAX_WITHDRAWAL.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
+                      <p className="text-sm text-muted-foreground">Max: {formatCurrencyDisplay(MAX_WITHDRAWAL)}</p>
                       <p className="text-sm text-muted-foreground">
-                        Current Balance: ${user.balance.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                        Current Balance: {formatCurrencyDisplay(user.balance)}
                       </p>
                     </FormItem>
                   )}
@@ -265,7 +273,6 @@ export default function WithdrawPage() {
           {step === 2 && (
             <Form {...detailsForm}>
               <form onSubmit={detailsForm.handleSubmit(onDetailsSubmit)} className="space-y-6">
-                {/* Personal Information */}
                 <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                     <FormField control={detailsForm.control} name="firstName" render={({ field }) => ( <FormItem><FormLabel>First Name</FormLabel><FormControl><Input placeholder="John" {...field} value={field.value ?? ''} /></FormControl><FormMessage /></FormItem> )} />
                     <FormField control={detailsForm.control} name="lastName" render={({ field }) => ( <FormItem><FormLabel>Last Name</FormLabel><FormControl><Input placeholder="Doe" {...field} value={field.value ?? ''} /></FormControl><FormMessage /></FormItem> )} />
@@ -280,7 +287,6 @@ export default function WithdrawPage() {
                     <FormField control={detailsForm.control} name="zipCode" render={({ field }) => ( <FormItem><FormLabel>ZIP/Postal Code</FormLabel><FormControl><Input placeholder="90210" {...field} value={field.value ?? ''} /></FormControl><FormMessage /></FormItem> )} />
                 </div>
 
-                {/* Payout Method */}
                 <FormField
                   control={detailsForm.control}
                   name="payoutMethod"
@@ -303,7 +309,6 @@ export default function WithdrawPage() {
                   )}
                 />
 
-                {/* Conditional Fields based on Payout Method */}
                 {currentPayoutMethod === 'Bank Transfer' && (
                   <>
                     <FormDescription className="flex items-center gap-1"><Info size={14}/>For US: Account & Routing. For International: IBAN & SWIFT.</FormDescription>

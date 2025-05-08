@@ -19,6 +19,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import { findCurrencyByCode, getDefaultCurrency } from '@/lib/currencies';
 
 const getTransactionIcon = (type: Transaction['type']) => {
   switch (type) {
@@ -34,10 +35,6 @@ const getTransactionIcon = (type: Transaction['type']) => {
   }
 };
 
-const formatCurrency = (amount: number) => {
-  return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(amount);
-};
-
 type SortKey = 'date' | 'description' | 'amount' | 'type' | 'status' | 'payoutMethod';
 type SortOrder = 'asc' | 'desc';
 
@@ -50,6 +47,17 @@ export default function TransactionsPage() {
   const { user, setUser, updatePendingWithdrawals } = useAuth();
   const { toast } = useToast();
 
+  const selectedUserCurrency = user ? (findCurrencyByCode(user.selectedCurrency) || getDefaultCurrency()) : getDefaultCurrency();
+
+  const formatCurrency = (amount: number) => {
+    return new Intl.NumberFormat('en-US', { 
+      style: 'currency', 
+      currency: selectedUserCurrency.code,
+      currencyDisplay: 'symbol' 
+    }).format(amount);
+  };
+
+
   useEffect(() => {
     const storedTransactions = localStorage.getItem('userTransactions');
     let loadedTransactions: Transaction[] = storedTransactions ? JSON.parse(storedTransactions) : [];
@@ -58,7 +66,7 @@ export default function TransactionsPage() {
     let transactionsUpdated = false;
 
     const updatedTransactions = loadedTransactions.map(tx => {
-      if (tx.status === 'Pending') { // Check ALL pending transactions
+      if (tx.status === 'Pending') { 
         const daysOld = differenceInDays(now, parseISO(tx.date));
         if (daysOld > 30) {
           transactionsUpdated = true;
@@ -81,10 +89,7 @@ export default function TransactionsPage() {
               updatePendingWithdrawals(Math.abs(tx.amount), 'subtract'); 
             }
           }
-          // For other types (Income, Expense, Deposit) that were pending and get rejected,
-          // no balance adjustment is needed here because their amounts were not pre-applied/deducted
-          // when they were created as 'Pending'.
-
+          
           toast({
             title: toastTitle,
             description: toastDescription,
@@ -101,9 +106,11 @@ export default function TransactionsPage() {
       localStorage.setItem('userTransactions', JSON.stringify(updatedTransactions));
       setAllTransactions(updatedTransactions);
     } else {
-      setAllTransactions(loadedTransactions);
+      // Ensure unique IDs before setting state, even if no updates
+      const uniqueTransactions = Array.from(new Map(loadedTransactions.map(item => [item.id, item])).values());
+      setAllTransactions(uniqueTransactions);
     }
-  }, [toast, user, setUser, updatePendingWithdrawals]);
+  }, [toast, user, setUser, updatePendingWithdrawals, selectedUserCurrency.code]);
 
 
   const filteredAndSortedTransactions = useMemo(() => {
@@ -250,7 +257,7 @@ export default function TransactionsPage() {
                            tx.type === 'Income' || tx.type === 'Deposit' ? "text-green-600" : 
                            tx.type === 'Expense' || (tx.type === 'Withdrawal' && tx.status !== 'Rejected') ? "text-red-600" :
                            (tx.type === 'Withdrawal' && tx.status === 'Rejected') ? "text-muted-foreground" :
-                           (tx.status === 'Rejected' ? "text-muted-foreground" : "") // Muted if any other rejected transaction
+                           (tx.status === 'Rejected' ? "text-muted-foreground" : "")
                         )}
                       >
                         {tx.type === 'Income' || tx.type === 'Deposit' ? '+' : (tx.type === 'Expense' || tx.type === 'Withdrawal' ? '-' : '')}

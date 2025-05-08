@@ -10,6 +10,7 @@ export interface User {
   pendingWithdrawals: number; // Added pending withdrawals
   totalTransactions: number; // Added total transactions count
   accountNumber: string; 
+  selectedCurrency: string; // Store currency code like 'USD', 'EUR'
   address?: {
     street: string;
     city: string;
@@ -58,3 +59,4 @@ export interface IncomeData {
 }
 
 export const ADMIN_CODE = "admin2025";
+

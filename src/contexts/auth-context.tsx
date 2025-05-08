@@ -8,12 +8,14 @@ import { useRouter } from 'next/navigation';
 import type { Dispatch, ReactNode, SetStateAction} from 'react';
 import { createContext, useContext, useEffect, useState } from 'react';
 import { formatISO, parseISO, differenceInDays, differenceInWeeks, differenceInMonths, differenceInYears, subDays } from 'date-fns';
+import { DEFAULT_CURRENCY_CODE } from '@/lib/currencies';
 
 interface AuthContextType {
   user: User | null;
   login: (email: string, pass: string) => Promise<boolean>;
-  signup: (userData: Omit<User, 'id' | 'accountNumber' | 'balance' | 'pendingWithdrawals' | 'totalTransactions' | 'creationDate' | 'lastInterestApplied' | 'address'> & { 
+  signup: (userData: Omit<User, 'id' | 'accountNumber' | 'balance' | 'pendingWithdrawals' | 'totalTransactions' | 'creationDate' | 'lastInterestApplied' | 'address' | 'selectedCurrency'> & { 
     initialBalance: number; 
+    selectedCurrency: string;
     password?: string;
     addressStreet: string;
     addressCity: string;
@@ -117,6 +119,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         userFromStorage.totalTransactions = userFromStorage.totalTransactions || 0;
         userFromStorage.creationDate = userFromStorage.creationDate || formatISO(new Date());
         userFromStorage.lastInterestApplied = userFromStorage.lastInterestApplied || formatISO(subDays(new Date(),1));
+        userFromStorage.selectedCurrency = userFromStorage.selectedCurrency || DEFAULT_CURRENCY_CODE;
         
         if (userFromStorage.accountNumber && typeof userFromStorage.accountNumber === 'string' && userFromStorage.accountNumber.startsWith('BB-')) {
           userFromStorage.accountNumber = userFromStorage.accountNumber.replace('BB-', 'QFS-');
@@ -139,6 +142,11 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     const storedUserObject = storedUserString ? JSON.parse(storedUserString) : null; 
 
     if (storedUserObject && email === storedUserObject.email /* && pass === 'password' */) { 
+      // Ensure selectedCurrency is present
+      if (!storedUserObject.selectedCurrency) {
+        storedUserObject.selectedCurrency = DEFAULT_CURRENCY_CODE;
+        localStorage.setItem('balanceBeamUser', JSON.stringify(storedUserObject));
+      }
       setUser(storedUserObject); 
       setLoading(false);
       router.push('/dashboard'); 
@@ -152,6 +160,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         userToStore.lastInterestApplied = userToStore.lastInterestApplied || formatISO(subDays(new Date(),1));
         userToStore.pendingWithdrawals = userToStore.pendingWithdrawals || 0;
         userToStore.totalTransactions = userToStore.totalTransactions || mockTransactions.length;
+        userToStore.selectedCurrency = userToStore.selectedCurrency || DEFAULT_CURRENCY_CODE;
 
 
         setUser(userToStore);
@@ -167,8 +176,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     return false;
   };
 
-  const signup = async (userData: Omit<User, 'id' | 'accountNumber' | 'balance' | 'pendingWithdrawals' | 'totalTransactions' | 'creationDate' | 'lastInterestApplied' | 'address'> & { 
+  const signup = async (userData: Omit<User, 'id' | 'accountNumber' | 'balance' | 'pendingWithdrawals' | 'totalTransactions' | 'creationDate' | 'lastInterestApplied' | 'address' | 'selectedCurrency'> & { 
     initialBalance: number; 
+    selectedCurrency: string;
     password?: string; 
     addressStreet: string;
     addressCity: string;
@@ -178,13 +188,14 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     setLoading(true);
     await new Promise(resolve => setTimeout(resolve, 1000));
 
-    const { initialBalance, password, addressStreet, addressCity, addressState, addressZip, ...userDetailsFromOmit } = userData;
+    const { initialBalance, selectedCurrency, password, addressStreet, addressCity, addressState, addressZip, ...userDetailsFromOmit } = userData;
     
     const newUser: User = {
       ...userDetailsFromOmit, 
       id: crypto.randomUUID(), 
       accountNumber: `QFS-${String(Math.floor(Math.random() * 90000000) + 10000000)}${String(Math.floor(Math.random() * 9000) + 1000)}`,
       balance: initialBalance,
+      selectedCurrency: selectedCurrency,
       pendingWithdrawals: 0,
       totalTransactions: 0,
       address: {
@@ -245,7 +256,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       // currentTransactions remains empty if parsing fails
     }
     
-    currentTransactions.unshift(newTransaction);
+    currentTransactions.unshift(newTransaction); // Add to the beginning
     localStorage.setItem('userTransactions', JSON.stringify(currentTransactions));
     
     setUser(prevUser => {

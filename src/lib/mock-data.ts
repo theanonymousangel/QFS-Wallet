@@ -1,5 +1,6 @@
 import type { User, Transaction, IncomeData } from './types';
 import { subDays, formatISO } from 'date-fns';
+import { DEFAULT_CURRENCY_CODE } from './currencies';
 
 const now = new Date();
 
@@ -14,6 +15,7 @@ export const mockUser: User = {
   pendingWithdrawals: 0, // Initialize pending withdrawals
   totalTransactions: 7, // Initialize based on current mock transactions
   accountNumber: `QFS-${String(Math.floor(Math.random() * 90000000) + 10000000)}${String(Math.floor(Math.random() * 9000) + 1000)}`,
+  selectedCurrency: DEFAULT_CURRENCY_CODE,
   address: {
     street: '123 Main St',
     city: 'Anytown',
