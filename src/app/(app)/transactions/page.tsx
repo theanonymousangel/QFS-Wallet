@@ -95,7 +95,8 @@ export default function TransactionsPage() {
 
 
   const filteredAndSortedTransactions = useMemo(() => {
-    let transactions = [...allTransactions];
+    // Start with a unique set of transactions from allTransactions by ID
+    let transactions = Array.from(new Map(allTransactions.map(tx => [tx.id, tx])).values());
 
     if (searchTerm) {
       transactions = transactions.filter(tx =>
@@ -107,28 +108,34 @@ export default function TransactionsPage() {
     if (filterType !== 'all') {
       transactions = transactions.filter(tx => tx.type === filterType);
     }
+    
+    // Create a mutable copy for sorting
+    const sortableTransactions = [...transactions];
 
-    transactions.sort((a, b) => {
+    sortableTransactions.sort((a, b) => {
       let comparison = 0;
-      const valA = a[sortKey];
-      const valB = b[sortKey];
+      const valA = a[sortKey as keyof Transaction];
+      const valB = b[sortKey as keyof Transaction];
 
-      if (sortKey === 'date') {
+      if (valA === undefined && valB !== undefined) {
+        comparison = -1; // undefined values come before defined values
+      } else if (valA !== undefined && valB === undefined) {
+        comparison = 1;  // defined values come after undefined values
+      } else if (valA === undefined && valB === undefined) {
+        comparison = 0; // both undefined, treat as equal
+      } else if (sortKey === 'date') {
         comparison = new Date(valA as string).getTime() - new Date(valB as string).getTime();
       } else if (sortKey === 'amount') {
         comparison = (valA as number) - (valB as number);
       } else if (typeof valA === 'string' && typeof valB === 'string') {
-        comparison = valA.localeCompare(valB);
-      } else if (valA === undefined && valB !== undefined) {
-        comparison = -1; // Put undefined values first or last depending on order
-      } else if (valA !== undefined && valB === undefined) {
-        comparison = 1;
+        comparison = (valA as string).localeCompare(valB as string);
       }
+      // Add other type-specific comparisons if necessary for other sortKeys
       
       return sortOrder === 'asc' ? comparison : -comparison;
     });
 
-    return transactions;
+    return sortableTransactions;
   }, [allTransactions, searchTerm, filterType, sortKey, sortOrder]);
 
   const handleSort = (key: SortKey) => {
