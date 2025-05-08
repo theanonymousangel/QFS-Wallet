@@ -15,7 +15,7 @@ import {
   Gem
 } from 'lucide-react';
 import { useAuth } from '@/contexts/auth-context';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Avatar, AvatarFallback } from '@/components/ui/avatar'; // Removed AvatarImage
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
@@ -61,12 +61,17 @@ export function AppShell({ children }: { children: ReactNode }) {
     );
   }
 
+  // This useEffect must be called unconditionally at the top level of the component.
+  // The logic inside can be conditional.
+  React.useEffect(() => {
+    if (!user && !loading && typeof window !== 'undefined') { // Ensure router.replace is only called client-side
+        router.replace('/login');
+    }
+  }, [user, loading, router]);
+
   if (!user) {
-     React.useEffect(() => {
-        if (typeof window !== 'undefined') { // Ensure router.replace is only called client-side
-            router.replace('/login');
-        }
-    }, [router]);
+    // Return a loading/redirecting state or null if the useEffect will handle the redirect.
+    // It's important not to call hooks conditionally.
     return (
       <div className="flex h-screen items-center justify-center bg-background">
         <Loader2 className="h-12 w-12 animate-spin text-primary" />
@@ -83,10 +88,10 @@ export function AppShell({ children }: { children: ReactNode }) {
   ];
 
   const getInitials = (firstName?: string, lastName?: string) => { 
-    if (firstName && lastName) {
+    if (firstName && lastName && firstName.length > 0 && lastName.length > 0) {
       return `${firstName[0]}${lastName[0]}`.toUpperCase();
     }
-    if (firstName) {
+    if (firstName && firstName.length > 0) {
       return `${firstName.substring(0,2)}`.toUpperCase();
     }
     return '??'; 
@@ -151,7 +156,6 @@ export function AppShell({ children }: { children: ReactNode }) {
               <DropdownMenuTrigger asChild>
                 <Button variant="ghost" size="icon" className="rounded-full">
                   <Avatar className="h-9 w-9">
-                    {/* Removed AvatarImage to always show fallback */}
                     <AvatarFallback>{userInitials}</AvatarFallback>
                   </Avatar>
                 </Button>
@@ -178,6 +182,7 @@ export function AppShell({ children }: { children: ReactNode }) {
     </div>
   );
 }
+
 
 
 
