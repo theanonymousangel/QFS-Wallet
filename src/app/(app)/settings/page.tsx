@@ -246,6 +246,7 @@ export default function SettingsPage() {
       // For this mock, we'll just acknowledge it.
       // AuthContext doesn't directly handle password changes, this is a UI mock-up of it.
       console.log("Password change requested (not implemented in AuthContext). New password:", data.password);
+      updatedUserFields.password = data.password; // Store new password if admin editing
       passwordChanged = true;
     }
 
@@ -354,7 +355,7 @@ export default function SettingsPage() {
                       />
                     </FormControl>
                     {!isAdminEditing && <FormDescription>Admin access only.</FormDescription>}
-                    {isAdminEditing && <FormDescription className="text-destructive">Balance editing enabled. Use with caution.</FormDescription>}
+                    {isAdminEditing && <FormDescription className="text-green-600 dark:text-green-500">Balance editing enabled. Use with caution.</FormDescription>}
                     <FormMessage />
                   </FormItem>
                 )}
@@ -402,7 +403,7 @@ export default function SettingsPage() {
                     </FormLabel>
                     <FormControl><Input type="email" {...field} readOnly={!isAdminEditing} aria-readonly={!isAdminEditing} /></FormControl>
                     {!isAdminEditing && <FormDescription>Admin access required to change email.</FormDescription>}
-                    {isAdminEditing && <FormDescription className="text-destructive">Email editing enabled.</FormDescription>}
+                    {isAdminEditing && <FormDescription className="text-green-600 dark:text-green-500">Email editing enabled.</FormDescription>}
                     <FormMessage />
                   </FormItem>
                 )}
@@ -425,7 +426,7 @@ export default function SettingsPage() {
                         </FormLabel>
                         <FormControl><Input type="password" placeholder="Leave blank to keep current" {...field} readOnly={!isAdminEditing} aria-readonly={!isAdminEditing} /></FormControl>
                         {!isAdminEditing && <FormDescription>Admin access required to change password.</FormDescription>}
-                        {isAdminEditing && <FormDescription className="text-destructive">Password editing enabled.</FormDescription>}
+                        {isAdminEditing && <FormDescription className="text-green-600 dark:text-green-500">Password editing enabled.</FormDescription>}
                         <FormMessage />
                         </FormItem>
                     )}
@@ -580,3 +581,4 @@ export default function SettingsPage() {
     </div>
   );
 }
+
