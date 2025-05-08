@@ -236,7 +236,7 @@ export default function TransactionsPage() {
       <Card className="shadow-lg">
         <CardHeader>
           <CardTitle>All Transactions</CardTitle>
-          <CardDescription>Review your complete financial activity. Pending transactions older than 30 days are automatically marked as rejected.</CardDescription>
+          {/* <CardDescription>Review your complete financial activity. Pending transactions older than 30 days are automatically marked as rejected.</CardDescription> */}
           <div className="mt-4 flex flex-col gap-4 sm:flex-row sm:items-center">
             <Input
               placeholder="Search descriptions, methods..."
