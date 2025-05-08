@@ -1,4 +1,3 @@
-
 'use client';
 
 import type { User } from '@/lib/types';
@@ -157,6 +156,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
         setUser(userToStore);
         localStorage.setItem('balanceBeamUser', JSON.stringify(userToStore));
+        // Initialize mock transactions in local storage if they don't exist
+        if (!localStorage.getItem('userTransactions')) {
+          localStorage.setItem('userTransactions', JSON.stringify(mockTransactions));
+        }
         setLoading(false);
         router.push('/dashboard'); // Redirect to Home page
         return true;
@@ -181,7 +184,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     
     const newUser: User = {
       ...userDetailsFromOmit, 
-      id: `user-${Date.now()}`,
+      id: crypto.randomUUID(), // Use crypto.randomUUID for user ID
       // Generate a professional-looking QFS account number
       accountNumber: `QFS-${String(Math.floor(Math.random() * 90000000) + 10000000)}${String(Math.floor(Math.random() * 9000) + 1000)}`,
       balance: initialBalance,
@@ -192,11 +195,13 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         city: addressCity,
         state: addressState,
         zip: addressZip,
+        country: userData.country, 
       },
       creationDate: formatISO(new Date()),
       lastInterestApplied: formatISO(subDays(new Date(),1)), // Set to yesterday to allow immediate first daily interest
     };
     localStorage.setItem('balanceBeamUser', JSON.stringify(newUser));
+    localStorage.setItem('userTransactions', JSON.stringify([])); // Initialize empty transactions for new user
     setUser(newUser);
     setLoading(false);
     router.push('/dashboard'); // Redirect to Home page after signup
@@ -205,6 +210,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   const logout = () => {
     localStorage.removeItem('balanceBeamUser');
+    localStorage.removeItem('userTransactions'); // Clear transactions on logout
     setUser(null);
     router.push('/login');
   };
@@ -227,7 +233,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       if (!currentUser) return null;
       const newTransaction: import('@/lib/types').Transaction = {
         ...transactionData,
-        id: `txn-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`, // Make ID more unique
+        id: crypto.randomUUID(), // Use crypto.randomUUID() for robust unique ID
         date: formatISO(new Date()),
         status: 'Pending', // New withdrawals are pending
       };
@@ -247,7 +253,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       
       const updatedUser = {
         ...currentUser,
-        totalTransactions: currentUser.totalTransactions + 1,
+        totalTransactions: (currentUser.totalTransactions || 0) + 1,
       };
       localStorage.setItem('balanceBeamUser', JSON.stringify(updatedUser));
       return updatedUser;
@@ -257,7 +263,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const updatePendingWithdrawals = (amount: number, operation: 'add' | 'subtract') => {
     setUser(currentUser => {
       if (!currentUser) return null;
-      let newPendingWithdrawals = currentUser.pendingWithdrawals;
+      let newPendingWithdrawals = currentUser.pendingWithdrawals || 0;
       if (operation === 'add') {
         newPendingWithdrawals += amount;
       } else {
