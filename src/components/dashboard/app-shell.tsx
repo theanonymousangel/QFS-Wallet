@@ -46,6 +46,12 @@ export function AppShell({ children }: { children: ReactNode }) {
   const currentPath = usePathname(); 
 
 
+  React.useEffect(() => {
+    if (!loading && !user) {
+      router.replace('/login');
+    }
+  }, [user, loading, router]);
+
   if (loading) {
     return (
       <div className="flex h-screen items-center justify-center bg-background">
@@ -56,12 +62,14 @@ export function AppShell({ children }: { children: ReactNode }) {
   }
 
   if (!user) {
-    // Handled by useEffect in HomePage or a middleware. 
-    // If still here, redirect.
-    if (typeof window !== 'undefined') { 
-        router.replace('/login'); 
-    }
-    return null; 
+    // This case should ideally be handled by the useEffect above or a middleware.
+    // Returning null while useEffect triggers redirection.
+    return (
+      <div className="flex h-screen items-center justify-center bg-background">
+        <Loader2 className="h-12 w-12 animate-spin text-primary" />
+        <p className="ml-4 text-lg text-foreground">Redirecting...</p>
+      </div>
+    );
   }
 
   const navItems: NavItem[] = [
