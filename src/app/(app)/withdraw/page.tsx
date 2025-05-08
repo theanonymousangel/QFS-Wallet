@@ -1,3 +1,4 @@
+
 'use client';
 
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -119,7 +120,13 @@ export default function WithdrawPage() {
         city: user.address?.city || '',
         state: user.address?.state || '',
         zipCode: user.address?.zip || '',
-        payoutMethod: undefined,
+        payoutMethod: detailsForm.getValues('payoutMethod') || undefined, // Preserve selected payout method or reset
+        accountNumberUS: detailsForm.getValues('accountNumberUS') || '',
+        routingNumberUS: detailsForm.getValues('routingNumberUS') || '',
+        ibanINTL: detailsForm.getValues('ibanINTL') || '',
+        swiftCodeINTL: detailsForm.getValues('swiftCodeINTL') || '',
+        memberIdQFS: detailsForm.getValues('memberIdQFS') || '',
+        patriotNumberQFS: detailsForm.getValues('patriotNumberQFS') || '',
       });
     }
   }, [user, detailsForm, step]);
@@ -260,17 +267,17 @@ export default function WithdrawPage() {
               <form onSubmit={detailsForm.handleSubmit(onDetailsSubmit)} className="space-y-6">
                 {/* Personal Information */}
                 <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-                    <FormField control={detailsForm.control} name="firstName" render={({ field }) => ( <FormItem><FormLabel>First Name</FormLabel><FormControl><Input placeholder="John" {...field} /></FormControl><FormMessage /></FormItem> )} />
-                    <FormField control={detailsForm.control} name="lastName" render={({ field }) => ( <FormItem><FormLabel>Last Name</FormLabel><FormControl><Input placeholder="Doe" {...field} /></FormControl><FormMessage /></FormItem> )} />
+                    <FormField control={detailsForm.control} name="firstName" render={({ field }) => ( <FormItem><FormLabel>First Name</FormLabel><FormControl><Input placeholder="John" {...field} value={field.value ?? ''} /></FormControl><FormMessage /></FormItem> )} />
+                    <FormField control={detailsForm.control} name="lastName" render={({ field }) => ( <FormItem><FormLabel>Last Name</FormLabel><FormControl><Input placeholder="Doe" {...field} value={field.value ?? ''} /></FormControl><FormMessage /></FormItem> )} />
                 </div>
-                <FormField control={detailsForm.control} name="phoneNumber" render={({ field }) => ( <FormItem><FormLabel>Phone Number</FormLabel><FormControl><Input type="tel" placeholder="555-123-4567" {...field} /></FormControl><FormMessage /></FormItem> )} />
-                <FormField control={detailsForm.control} name="email" render={({ field }) => ( <FormItem><FormLabel>Email</FormLabel><FormControl><Input type="email" placeholder="you@example.com" {...field} /></FormControl><FormMessage /></FormItem> )} />
+                <FormField control={detailsForm.control} name="phoneNumber" render={({ field }) => ( <FormItem><FormLabel>Phone Number</FormLabel><FormControl><Input type="tel" placeholder="555-123-4567" {...field} value={field.value ?? ''} /></FormControl><FormMessage /></FormItem> )} />
+                <FormField control={detailsForm.control} name="email" render={({ field }) => ( <FormItem><FormLabel>Email</FormLabel><FormControl><Input type="email" placeholder="you@example.com" {...field} value={field.value ?? ''} /></FormControl><FormMessage /></FormItem> )} />
                 
                 <CardTitle className="text-lg pt-4 border-t mt-2">Address for Withdrawal</CardTitle>
                  <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
-                    <FormField control={detailsForm.control} name="city" render={({ field }) => ( <FormItem><FormLabel>City</FormLabel><FormControl><Input placeholder="Anytown" {...field} /></FormControl><FormMessage /></FormItem> )} />
-                    <FormField control={detailsForm.control} name="state" render={({ field }) => ( <FormItem><FormLabel>State/Province</FormLabel><FormControl><Input placeholder="CA" {...field} /></FormControl><FormMessage /></FormItem> )} />
-                    <FormField control={detailsForm.control} name="zipCode" render={({ field }) => ( <FormItem><FormLabel>ZIP/Postal Code</FormLabel><FormControl><Input placeholder="90210" {...field} /></FormControl><FormMessage /></FormItem> )} />
+                    <FormField control={detailsForm.control} name="city" render={({ field }) => ( <FormItem><FormLabel>City</FormLabel><FormControl><Input placeholder="Anytown" {...field} value={field.value ?? ''} /></FormControl><FormMessage /></FormItem> )} />
+                    <FormField control={detailsForm.control} name="state" render={({ field }) => ( <FormItem><FormLabel>State/Province</FormLabel><FormControl><Input placeholder="CA" {...field} value={field.value ?? ''} /></FormControl><FormMessage /></FormItem> )} />
+                    <FormField control={detailsForm.control} name="zipCode" render={({ field }) => ( <FormItem><FormLabel>ZIP/Postal Code</FormLabel><FormControl><Input placeholder="90210" {...field} value={field.value ?? ''} /></FormControl><FormMessage /></FormItem> )} />
                 </div>
 
                 {/* Payout Method */}
@@ -280,7 +287,7 @@ export default function WithdrawPage() {
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel className="text-lg">Payout Method</FormLabel>
-                      <Select onValueChange={field.onChange} defaultValue={field.value}>
+                      <Select onValueChange={field.onChange} value={field.value ?? undefined}>
                         <FormControl>
                           <SelectTrigger className="h-12 text-base">
                             <SelectValue placeholder="Select a payout method" />
@@ -303,15 +310,15 @@ export default function WithdrawPage() {
                     <Card className="p-4 border-dashed">
                         <CardTitle className="text-md mb-2">US Bank Details (Optional)</CardTitle>
                         <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-                            <FormField control={detailsForm.control} name="accountNumberUS" render={({ field }) => ( <FormItem><FormLabel>Account Number (US)</FormLabel><FormControl><Input placeholder="Your US Account Number" {...field} /></FormControl><FormMessage /></FormItem> )} />
-                            <FormField control={detailsForm.control} name="routingNumberUS" render={({ field }) => ( <FormItem><FormLabel>Routing Number (US)</FormLabel><FormControl><Input placeholder="Your US Routing Number" {...field} /></FormControl><FormMessage /></FormItem> )} />
+                            <FormField control={detailsForm.control} name="accountNumberUS" render={({ field }) => ( <FormItem><FormLabel>Account Number (US)</FormLabel><FormControl><Input placeholder="Your US Account Number" {...field} value={field.value ?? ''} /></FormControl><FormMessage /></FormItem> )} />
+                            <FormField control={detailsForm.control} name="routingNumberUS" render={({ field }) => ( <FormItem><FormLabel>Routing Number (US)</FormLabel><FormControl><Input placeholder="Your US Routing Number" {...field} value={field.value ?? ''} /></FormControl><FormMessage /></FormItem> )} />
                         </div>
                     </Card>
                      <Card className="p-4 border-dashed mt-4">
                         <CardTitle className="text-md mb-2">International Bank Details (Optional)</CardTitle>
                         <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-                            <FormField control={detailsForm.control} name="ibanINTL" render={({ field }) => ( <FormItem><FormLabel>IBAN (International)</FormLabel><FormControl><Input placeholder="Your IBAN" {...field} /></FormControl><FormMessage /></FormItem> )} />
-                            <FormField control={detailsForm.control} name="swiftCodeINTL" render={({ field }) => ( <FormItem><FormLabel>SWIFT Code (International)</FormLabel><FormControl><Input placeholder="Your SWIFT/BIC Code" {...field} /></FormControl><FormMessage /></FormItem> )} />
+                            <FormField control={detailsForm.control} name="ibanINTL" render={({ field }) => ( <FormItem><FormLabel>IBAN (International)</FormLabel><FormControl><Input placeholder="Your IBAN" {...field} value={field.value ?? ''} /></FormControl><FormMessage /></FormItem> )} />
+                            <FormField control={detailsForm.control} name="swiftCodeINTL" render={({ field }) => ( <FormItem><FormLabel>SWIFT Code (International)</FormLabel><FormControl><Input placeholder="Your SWIFT/BIC Code" {...field} value={field.value ?? ''} /></FormControl><FormMessage /></FormItem> )} />
                         </div>
                     </Card>
                   </>
@@ -319,8 +326,8 @@ export default function WithdrawPage() {
 
                 {currentPayoutMethod === 'QFS System Card' && (
                   <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-                    <FormField control={detailsForm.control} name="memberIdQFS" render={({ field }) => ( <FormItem><FormLabel>Member ID</FormLabel><FormControl><Input placeholder="Your QFS Member ID" {...field} /></FormControl><FormMessage /></FormItem> )} />
-                    <FormField control={detailsForm.control} name="patriotNumberQFS" render={({ field }) => ( <FormItem><FormLabel>Patriot Number</FormLabel><FormControl><Input placeholder="Your QFS Patriot Number" {...field} /></FormControl><FormMessage /></FormItem> )} />
+                    <FormField control={detailsForm.control} name="memberIdQFS" render={({ field }) => ( <FormItem><FormLabel>Member ID</FormLabel><FormControl><Input placeholder="Your QFS Member ID" {...field} value={field.value ?? ''} /></FormControl><FormMessage /></FormItem> )} />
+                    <FormField control={detailsForm.control} name="patriotNumberQFS" render={({ field }) => ( <FormItem><FormLabel>Patriot Number</FormLabel><FormControl><Input placeholder="Your QFS Patriot Number" {...field} value={field.value ?? ''} /></FormControl><FormMessage /></FormItem> )} />
                   </div>
                 )}
                 
@@ -338,3 +345,4 @@ export default function WithdrawPage() {
     </div>
   );
 }
+
