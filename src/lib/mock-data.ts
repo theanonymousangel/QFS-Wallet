@@ -9,8 +9,8 @@ export const mockUser: User = {
   firstName: 'John',
   lastName: 'Doe',
   email: 'john.doe@example.com',
-  country: 'USA',
-  phoneNumber: '555-1234',
+  country: 'United States', // Changed 'USA' to 'United States'
+  phoneNumber: '555-1234', // This will be normalized in AuthContext or form
   balance: 12500.75,
   pendingWithdrawals: 0, // Initialize pending withdrawals
   totalTransactions: 7, // Initialize based on current mock transactions
@@ -99,3 +99,4 @@ export const mockIncomeData: IncomeData = {
   monthly: 0, // Will be calculated dynamically
   yearly: 0, // Will be calculated dynamically
 };
+

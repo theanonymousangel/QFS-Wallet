@@ -1,4 +1,3 @@
-
 'use client';
 
 import type { User, Transaction } from '@/lib/types';
@@ -9,6 +8,7 @@ import type { Dispatch, ReactNode, SetStateAction} from 'react';
 import { createContext, useContext, useEffect, useState } from 'react';
 import { formatISO, parseISO, differenceInDays, differenceInWeeks, differenceInMonths, differenceInYears, subDays } from 'date-fns';
 import { DEFAULT_CURRENCY_CODE } from '@/lib/currencies';
+import { findCountryByIsoCode } from '@/lib/countries'; // Import findCountryByIsoCode
 
 interface AuthContextType {
   user: User | null;
@@ -114,7 +114,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       try {
         let userFromStorage: User = JSON.parse(storedUserString);
         // Ensure all necessary fields exist from older stored versions
-        userFromStorage.country = userFromStorage.country || 'USA'; // Default if missing
+        userFromStorage.country = userFromStorage.country || findCountryByIsoCode('US')?.name || 'United States'; // Default to 'United States' if missing
         userFromStorage.pendingWithdrawals = userFromStorage.pendingWithdrawals || 0;
         userFromStorage.totalTransactions = userFromStorage.totalTransactions || 0;
         userFromStorage.creationDate = userFromStorage.creationDate || formatISO(new Date());
@@ -145,8 +145,12 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       // Ensure selectedCurrency is present
       if (!storedUserObject.selectedCurrency) {
         storedUserObject.selectedCurrency = DEFAULT_CURRENCY_CODE;
-        localStorage.setItem('balanceBeamUser', JSON.stringify(storedUserObject));
       }
+      // Ensure country is valid or default it
+      if (!storedUserObject.country) {
+        storedUserObject.country = findCountryByIsoCode('US')?.name || 'United States';
+      }
+      localStorage.setItem('balanceBeamUser', JSON.stringify(storedUserObject));
       setUser(storedUserObject); 
       setLoading(false);
       router.push('/dashboard'); 
@@ -161,6 +165,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         userToStore.pendingWithdrawals = userToStore.pendingWithdrawals || 0;
         userToStore.totalTransactions = userToStore.totalTransactions || mockTransactions.length;
         userToStore.selectedCurrency = userToStore.selectedCurrency || DEFAULT_CURRENCY_CODE;
+        userToStore.country = userToStore.country || findCountryByIsoCode('US')?.name || 'United States';
 
 
         setUser(userToStore);
@@ -304,4 +309,3 @@ export const useAuth = () => {
   }
   return context;
 };
-

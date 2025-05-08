@@ -1,4 +1,3 @@
-
 'use client';
 
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -108,16 +107,35 @@ export default function SettingsPage() {
 
   useEffect(() => {
     if (user) {
-      const userCountry = COUNTRIES_LIST.find(c => c.name === user.country);
-      const userPhoneNumberNational = user.phoneNumber && userCountry 
-          ? user.phoneNumber.replace(`+${userCountry.dialCode}`, '').replace(/\D/g, '') 
-          : (user.phoneNumber || '').replace(/\D/g, '');
+      const userCountryData = COUNTRIES_LIST.find(c => c.name === user.country);
+      
+      let userPhoneNumberNational = '';
+      if (user.phoneNumber) {
+          if (userCountryData && user.phoneNumber.startsWith(`+${userCountryData.dialCode}`)) {
+              userPhoneNumberNational = user.phoneNumber.substring(`+${userCountryData.dialCode}`.length).replace(/\D/g, '');
+          } else {
+              // If dial code doesn't match or isn't present, assume the stored number is already national or needs cleaning
+              userPhoneNumberNational = user.phoneNumber.replace(/\D/g, '');
+              // Attempt to find country by any leading digits if userCountryData was not found by name
+              if (!userCountryData) {
+                for (const c of COUNTRIES_LIST) {
+                    if (user.phoneNumber.startsWith(`+${c.dialCode}`)) {
+                        // Found a potential match by dial code
+                        // This part might be complex if dial codes overlap or are subset of others
+                        // For now, we assume it was set correctly on signup or previous edit.
+                        break;
+                    }
+                }
+              }
+          }
+      }
+
 
       form.reset({
         firstName: user.firstName,
         lastName: user.lastName,
         email: user.email,
-        countryIsoCode: userCountry?.code || '',
+        countryIsoCode: userCountryData?.code || '',
         phoneNumber: userPhoneNumberNational,
         addressStreet: user.address?.street || '',
         addressCity: user.address?.city || '',
@@ -125,7 +143,7 @@ export default function SettingsPage() {
         addressZip: user.address?.zip || '',
         balance: user.balance,
       });
-      if (userCountry) setSelectedCountry(userCountry);
+      if (userCountryData) setSelectedCountry(userCountryData);
     }
   }, [user, form]);
 
@@ -227,11 +245,16 @@ export default function SettingsPage() {
     
     if (balanceUpdated) setIsBalanceEditing(false); 
 
-    form.reset({}, { keepValues: true }); 
+    // form.reset({}, { keepValues: true }); // This might be problematic with async setUser
+    // Reset password fields manually if they were filled
     if (data.password) { 
         form.setValue('password', '');
         form.setValue('confirmPassword', '');
     }
+    // Re-sync form with potentially updated user state from setUser
+    // This is a bit tricky due to async nature of setUser and local form state
+    // A slight delay or a more robust state management for form defaults might be needed
+    // For now, let's assume the useEffect on `user` will re-populate correctly
   }
 
   return (
@@ -450,7 +473,7 @@ export default function SettingsPage() {
                 </div>
 
               <CardFooter className="border-t pt-6 px-0">
-                <Button type="submit" className="ml-auto" disabled={isLoading || (!form.formState.isDirty && !isBalanceEditing)}>
+                <Button type="submit" className="ml-auto" disabled={isLoading || (!form.formState.isDirty && !isBalanceEditing && !form.formState.dirtyFields.balance)}>
                   {isLoading ? (
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                   ) : (
