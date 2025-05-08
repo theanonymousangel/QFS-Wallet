@@ -18,6 +18,7 @@ import {
 } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { CurrencyInput } from '@/components/ui/currency-input';
+import { PhoneNumberInput } from '@/components/ui/phone-number-input';
 import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -37,7 +38,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import { COUNTRIES_LIST } from '@/lib/countries';
+import { COUNTRIES_LIST, findCountryByIsoCode, type Country } from '@/lib/countries';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 
@@ -49,12 +50,12 @@ const settingsFormSchema = z.object({
     message: "Password must be at least 6 characters if provided."
   }),
   confirmPassword: z.string().optional(),
-  phoneNumber: z.string().optional(),
+  phoneNumber: z.string().optional(), // Will store raw national digits
   addressStreet: z.string().optional(),
   addressCity: z.string().optional(),
   addressState: z.string().optional(),
   addressZip: z.string().optional(),
-  country: z.string().optional(),
+  countryIsoCode: z.string().optional(), // Store ISO code
   balance: z.coerce.number().min(0, 'Balance cannot be negative.'),
 }).refine(data => data.password === data.confirmPassword, {
   message: "Passwords don't match",
@@ -70,6 +71,7 @@ export default function SettingsPage() {
   const [isBalanceEditing, setIsBalanceEditing] = useState(false);
   const [adminCodeInput, setAdminCodeInput] = useState('');
   const [showAdminCodeDialog, setShowAdminCodeDialog] = useState(false);
+  const [selectedCountry, setSelectedCountry] = useState<Country | undefined>(undefined);
 
 
   const form = useForm<SettingsFormValues>({
@@ -85,25 +87,42 @@ export default function SettingsPage() {
       addressCity: '',
       addressState: '',
       addressZip: '',
-      country: '',
+      countryIsoCode: '',
       balance: 0,
     },
   });
+  
+  const watchedCountryIsoCode = form.watch('countryIsoCode');
+
+  useEffect(() => {
+    if (watchedCountryIsoCode) {
+      setSelectedCountry(findCountryByIsoCode(watchedCountryIsoCode));
+    } else {
+      setSelectedCountry(undefined);
+    }
+  }, [watchedCountryIsoCode]);
+
 
   useEffect(() => {
     if (user) {
+      const userCountry = COUNTRIES_LIST.find(c => c.name === user.country);
+      const userPhoneNumberNational = user.phoneNumber && userCountry 
+          ? user.phoneNumber.replace(`+${userCountry.dialCode}`, '').replace(/\D/g, '') 
+          : (user.phoneNumber || '').replace(/\D/g, '');
+
       form.reset({
         firstName: user.firstName,
         lastName: user.lastName,
         email: user.email,
-        country: user.country || '', // Ensure country is at least an empty string
-        phoneNumber: user.phoneNumber || '',
+        countryIsoCode: userCountry?.code || '',
+        phoneNumber: userPhoneNumberNational,
         addressStreet: user.address?.street || '',
         addressCity: user.address?.city || '',
         addressState: user.address?.state || '',
-        addressZip: user.address?.zip || '', // Ensure zip is at least an empty string
+        addressZip: user.address?.zip || '',
         balance: user.balance,
       });
+      if (userCountry) setSelectedCountry(userCountry);
     }
   }, [user, form]);
 
@@ -135,11 +154,11 @@ export default function SettingsPage() {
     if (adminCodeInput === ADMIN_CODE) {
       setIsBalanceEditing(true);
       setShowAdminCodeDialog(false);
-      setAdminCodeInput(''); // Clear input
+      setAdminCodeInput(''); 
       toast({ title: "Admin Access Granted", description: "You can now edit the balance." });
     } else {
       toast({ title: "Admin Access Denied", description: "Incorrect admin code.", variant: "destructive" });
-      setAdminCodeInput(''); // Clear input
+      setAdminCodeInput(''); 
     }
   };
 
@@ -147,28 +166,31 @@ export default function SettingsPage() {
   async function onSubmit(data: SettingsFormValues) {
     setIsLoading(true);
     
-    // Simulate API call
     await new Promise(resolve => setTimeout(resolve, 1500));
+
+    const countryData = data.countryIsoCode ? findCountryByIsoCode(data.countryIsoCode) : undefined;
+    const fullPhoneNumber = data.phoneNumber && countryData 
+        ? `+${countryData.dialCode}${data.phoneNumber.replace(/\D/g, '')}`
+        : data.phoneNumber;
 
     const updatedUserFields: Partial<User> = {
       firstName: data.firstName,
       lastName: data.lastName,
       email: data.email,
-      country: data.country,
-      phoneNumber: data.phoneNumber,
+      country: countryData?.name || '', // Store full name
+      phoneNumber: fullPhoneNumber,
       address: {
         street: data.addressStreet || '',
         city: data.addressCity || '',
         state: data.addressState || '',
         zip: data.addressZip || '',
-        country: data.country || '', 
+        country: countryData?.name || '', 
       },
-      // Balance is handled separately if edited
     };
     
     let balanceUpdated = false;
     if (isBalanceEditing && data.balance !== user.balance) {
-      const success = await updateUserBalance(data.balance, ADMIN_CODE); // Pass current code for safety, already validated
+      const success = await updateUserBalance(data.balance, ADMIN_CODE); 
       if (success) {
         balanceUpdated = true;
       } else {
@@ -191,10 +213,10 @@ export default function SettingsPage() {
       description: 'Your profile information has been saved.',
     });
     
-    if (balanceUpdated) setIsBalanceEditing(false); // Reset balance editing state
+    if (balanceUpdated) setIsBalanceEditing(false); 
 
-    form.reset({}, { keepValues: true }); // Reset dirty state but keep current values
-    if (data.password) { // Clear password fields after submission
+    form.reset({}, { keepValues: true }); 
+    if (data.password) { 
         form.setValue('password', '');
         form.setValue('confirmPassword', '');
     }
@@ -223,7 +245,6 @@ export default function SettingsPage() {
           <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
               
-              {/* Balance Field */}
               <FormField
                 control={form.control}
                 name="balance"
@@ -245,7 +266,7 @@ export default function SettingsPage() {
                         readOnly={!isBalanceEditing}
                         aria-readonly={!isBalanceEditing}
                         className="text-lg"
-                        maxBeforeDecimal={10} // Example: up to 99,999,999,999.99
+                        maxBeforeDecimal={10} 
                       />
                     </FormControl>
                     {!isBalanceEditing && <FormDescription>Admin access only.</FormDescription>}
@@ -320,41 +341,54 @@ export default function SettingsPage() {
               
               <FormField
                 control={form.control}
+                name="countryIsoCode" // Changed from 'country' to 'countryIsoCode'
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Country</FormLabel>
+                     <Select 
+                        onValueChange={(value) => {
+                          field.onChange(value);
+                          form.setValue('phoneNumber', ''); // Reset phone number when country changes
+                        }} 
+                        value={field.value || ''} 
+                        defaultValue={field.value || ''}>
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select country" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        {COUNTRIES_LIST.map((countryItem) => (
+                          <SelectItem key={countryItem.code} value={countryItem.code}>
+                            {countryItem.name} (+{countryItem.dialCode})
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
                 name="phoneNumber"
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Phone Number</FormLabel>
-                    <FormControl><Input type="tel" {...field} value={field.value || ''} /></FormControl>
+                    <FormControl>
+                      <PhoneNumberInput 
+                        {...field} 
+                        countryIsoCode={selectedCountry?.code}
+                        value={field.value || ''} 
+                        onChange={field.onChange}
+                      />
+                    </FormControl>
                     <FormMessage />
                   </FormItem>
                 )}
               />
 
               <CardTitle className="text-xl pt-4 border-t mt-4">Address Details</CardTitle>
-                <FormField
-                  control={form.control}
-                  name="country"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Country</FormLabel>
-                       <Select onValueChange={field.onChange} value={field.value || ''} defaultValue={field.value || ''}>
-                        <FormControl>
-                          <SelectTrigger>
-                            <SelectValue placeholder="Select country" />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          {COUNTRIES_LIST.map((countryItem) => (
-                            <SelectItem key={countryItem.code} value={countryItem.name}>
-                              {countryItem.name}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
                 <FormField
                   control={form.control}
                   name="addressStreet"
@@ -417,7 +451,6 @@ export default function SettingsPage() {
         </CardContent>
       </Card>
 
-      {/* Admin Code Dialog */}
       <AlertDialog open={showAdminCodeDialog} onOpenChange={setShowAdminCodeDialog}>
         <AlertDialogContent>
           <AlertDialogHeader>

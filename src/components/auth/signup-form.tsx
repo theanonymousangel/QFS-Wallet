@@ -6,7 +6,7 @@ import { useForm } from 'react-hook-form';
 import * as z from 'zod';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 
 import { Button } from '@/components/ui/button';
 import {
@@ -19,11 +19,12 @@ import {
 } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { CurrencyInput } from '@/components/ui/currency-input';
+import { PhoneNumberInput } from '@/components/ui/phone-number-input';
 import { useAuth } from '@/contexts/auth-context';
 import { useToast } from '@/hooks/use-toast';
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Loader2 } from 'lucide-react';
-import { COUNTRIES_LIST } from '@/lib/countries'; // Assuming you have a list of countries
+import { COUNTRIES_LIST, findCountryByIsoCode, type Country } from '@/lib/countries'; 
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 
@@ -32,7 +33,7 @@ const signupFormSchema = z.object({
   lastName: z.string().min(1, { message: 'Last name is required.' }),
   email: z.string().email({ message: 'Please enter a valid email.' }),
   password: z.string().min(6, { message: 'Password must be at least 6 characters.' }),
-  country: z.string().min(1, { message: 'Country is required.'}),
+  countryIsoCode: z.string().min(1, { message: 'Country is required.'}), // Storing ISO code
   phoneNumber: z.string().optional(),
   addressStreet: z.string().min(1, { message: 'Street address is required.' }),
   addressCity: z.string().min(1, { message: 'City is required.' }),
@@ -48,6 +49,7 @@ export function SignupForm() {
   const { signup } = useAuth();
   const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(false);
+  const [selectedCountry, setSelectedCountry] = useState<Country | undefined>(undefined);
 
   const form = useForm<SignupFormValues>({
     resolver: zodResolver(signupFormSchema),
@@ -56,7 +58,7 @@ export function SignupForm() {
       lastName: '',
       email: '',
       password: '',
-      country: '',
+      countryIsoCode: '',
       phoneNumber: '',
       addressStreet: '',
       addressCity: '',
@@ -66,14 +68,37 @@ export function SignupForm() {
     },
   });
 
+  const watchedCountryIsoCode = form.watch('countryIsoCode');
+
+  useEffect(() => {
+    if (watchedCountryIsoCode) {
+      setSelectedCountry(findCountryByIsoCode(watchedCountryIsoCode));
+    } else {
+      setSelectedCountry(undefined);
+    }
+  }, [watchedCountryIsoCode]);
+
   async function onSubmit(data: SignupFormValues) {
     setIsLoading(true);
-    const success = await signup(data); 
+    
+    // Construct the full phone number with country code before sending to signup
+    const countryData = findCountryByIsoCode(data.countryIsoCode);
+    const fullPhoneNumber = data.phoneNumber && countryData 
+      ? `+${countryData.dialCode}${data.phoneNumber.replace(/\D/g, '')}` 
+      : data.phoneNumber; // Fallback or if no country data
+
+    const countryName = countryData ? countryData.name : data.countryIsoCode; // Send full country name
+
+    const success = await signup({
+      ...data,
+      country: countryName, // Use the full country name
+      phoneNumber: fullPhoneNumber, // Use the potentially prefixed phone number
+    }); 
     setIsLoading(false);
 
     if (success) {
       toast({ title: 'Signup Successful', description: 'Account created. Redirecting to Home...' });
-      router.push('/dashboard'); // Redirect to Home Page
+      router.push('/dashboard'); 
     } else {
       toast({
         title: 'Signup Failed',
@@ -147,11 +172,16 @@ export function SignupForm() {
             />
              <FormField
               control={form.control}
-              name="country"
+              name="countryIsoCode"
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Country</FormLabel>
-                  <Select onValueChange={field.onChange} value={field.value || ''} defaultValue={field.value || ''}>
+                  <Select onValueChange={(value) => {
+                      field.onChange(value);
+                      form.setValue('phoneNumber', ''); // Reset phone number when country changes
+                    }} 
+                    value={field.value || ''} 
+                    defaultValue={field.value || ''}>
                     <FormControl>
                       <SelectTrigger>
                         <SelectValue placeholder="Select country" />
@@ -159,8 +189,8 @@ export function SignupForm() {
                     </FormControl>
                     <SelectContent>
                       {COUNTRIES_LIST.map((country) => (
-                        <SelectItem key={country.code} value={country.name}>
-                          {country.name}
+                        <SelectItem key={country.code} value={country.code}>
+                          {country.name} (+{country.dialCode})
                         </SelectItem>
                       ))}
                     </SelectContent>
@@ -176,7 +206,12 @@ export function SignupForm() {
                 <FormItem>
                   <FormLabel>Phone Number (Optional)</FormLabel>
                   <FormControl>
-                    <Input placeholder="555-123-4567" {...field} value={field.value || ''} />
+                     <PhoneNumberInput 
+                        {...field}
+                        countryIsoCode={selectedCountry?.code}
+                        value={field.value || ''}
+                        onChange={field.onChange}
+                     />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -248,7 +283,7 @@ export function SignupForm() {
                       value={typeof field.value === 'number' ? field.value : 0}
                       onChange={field.onChange}
                       onBlur={field.onBlur}
-                      maxBeforeDecimal={10} // Allows up to 99,999,999,999.99
+                      maxBeforeDecimal={10} 
                     />
                   </FormControl>
                   <FormMessage />
@@ -273,3 +308,4 @@ export function SignupForm() {
     </Card>
   );
 }
+
