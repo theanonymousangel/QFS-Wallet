@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useMemo, useEffect } from 'react';
@@ -27,7 +28,7 @@ const getTransactionIcon = (type: Transaction['type']) => {
     case 'Expense':
       return <ArrowDownLeft className="h-5 w-5 text-red-500" />;
     case 'Withdrawal':
-      return <Landmark className="h-5 w-5 text-primary" />; // Changed color to primary for consistency
+      return <Landmark className="h-5 w-5 text-primary" />; 
     default:
       return <ArrowRightLeft className="h-5 w-5 text-muted-foreground" />;
   }
@@ -50,35 +51,46 @@ export default function TransactionsPage() {
   const { toast } = useToast();
 
   useEffect(() => {
-    // Load transactions from localStorage (or API in a real app)
     const storedTransactions = localStorage.getItem('userTransactions');
     let loadedTransactions: Transaction[] = storedTransactions ? JSON.parse(storedTransactions) : [];
     
-    // Check for pending withdrawals older than 30 days
     const now = new Date();
     let transactionsUpdated = false;
+
     const updatedTransactions = loadedTransactions.map(tx => {
-      if (tx.type === 'Withdrawal' && tx.status === 'Pending') {
+      if (tx.status === 'Pending') { // Check ALL pending transactions
         const daysOld = differenceInDays(now, parseISO(tx.date));
         if (daysOld > 30) {
           transactionsUpdated = true;
+          
+          let toastTitle = 'Transaction Rejected';
+          let toastDescription = `Your transaction "${tx.description}" for ${formatCurrency(Math.abs(tx.amount))} was automatically rejected after 30 days.`;
+
+          if (tx.type === 'Withdrawal') {
+            toastTitle = 'Withdrawal Rejected';
+            toastDescription = `Your withdrawal of ${formatCurrency(Math.abs(tx.amount))} for "${tx.description}" was rejected by your ${tx.payoutMethod === 'Bank Transfer' ? 'bank' : 'card'}. Please contact your Telegram agent.`;
+            
+            if (user) {
+              setUser(prevUser => {
+                if (!prevUser) return null;
+                return {
+                  ...prevUser,
+                  balance: prevUser.balance + Math.abs(tx.amount), 
+                };
+              });
+              updatePendingWithdrawals(Math.abs(tx.amount), 'subtract'); 
+            }
+          }
+          // For other types (Income, Expense, Deposit) that were pending and get rejected,
+          // no balance adjustment is needed here because their amounts were not pre-applied/deducted
+          // when they were created as 'Pending'.
+
           toast({
-            title: 'Withdrawal Rejected',
-            description: `Your withdrawal of ${formatCurrency(Math.abs(tx.amount))} for "${tx.description}" was rejected by your ${tx.payoutMethod === 'Bank Transfer' ? 'bank' : 'card'}. Please contact your Telegram agent.`,
+            title: toastTitle,
+            description: toastDescription,
             variant: 'destructive',
             duration: 10000,
           });
-           // Add amount back to user's balance and remove from pending withdrawals
-          if (user) {
-            setUser(prevUser => {
-              if (!prevUser) return null;
-              return {
-                ...prevUser,
-                balance: prevUser.balance + Math.abs(tx.amount),
-              };
-            });
-            updatePendingWithdrawals(Math.abs(tx.amount), 'subtract');
-          }
           return { ...tx, status: 'Rejected' as 'Rejected' };
         }
       }
@@ -95,7 +107,6 @@ export default function TransactionsPage() {
 
 
   const filteredAndSortedTransactions = useMemo(() => {
-    // Start with a unique set of transactions from allTransactions by ID
     let transactions = Array.from(new Map(allTransactions.map(tx => [tx.id, tx])).values());
 
     if (searchTerm) {
@@ -109,7 +120,6 @@ export default function TransactionsPage() {
       transactions = transactions.filter(tx => tx.type === filterType);
     }
     
-    // Create a mutable copy for sorting
     const sortableTransactions = [...transactions];
 
     sortableTransactions.sort((a, b) => {
@@ -118,11 +128,11 @@ export default function TransactionsPage() {
       const valB = b[sortKey as keyof Transaction];
 
       if (valA === undefined && valB !== undefined) {
-        comparison = -1; // undefined values come before defined values
+        comparison = -1; 
       } else if (valA !== undefined && valB === undefined) {
-        comparison = 1;  // defined values come after undefined values
+        comparison = 1;  
       } else if (valA === undefined && valB === undefined) {
-        comparison = 0; // both undefined, treat as equal
+        comparison = 0; 
       } else if (sortKey === 'date') {
         comparison = new Date(valA as string).getTime() - new Date(valB as string).getTime();
       } else if (sortKey === 'amount') {
@@ -130,7 +140,6 @@ export default function TransactionsPage() {
       } else if (typeof valA === 'string' && typeof valB === 'string') {
         comparison = (valA as string).localeCompare(valB as string);
       }
-      // Add other type-specific comparisons if necessary for other sortKeys
       
       return sortOrder === 'asc' ? comparison : -comparison;
     });
@@ -152,7 +161,7 @@ export default function TransactionsPage() {
   const renderPayoutDetails = (details?: Transaction['payoutMethodDetails']) => {
     if (!details) return 'N/A';
     const relevantDetails = Object.entries(details)
-        .filter(([key, value]) => value && !['fullName', 'phone', 'email', 'city', 'state', 'zip'].includes(key)) // Exclude common contact details
+        .filter(([key, value]) => value && !['fullName', 'phone', 'email', 'city', 'state', 'zip'].includes(key)) 
         .map(([key, value]) => `${key.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase())}: ${value}`)
         .join('\n');
     return relevantDetails || 'Details not specified';
@@ -165,7 +174,7 @@ export default function TransactionsPage() {
       <Card className="shadow-lg">
         <CardHeader>
           <CardTitle>All Transactions</CardTitle>
-          <CardDescription>Review your complete financial activity. Pending withdrawals older than 30 days are automatically marked as rejected.</CardDescription>
+          <CardDescription>Review your complete financial activity. Pending transactions older than 30 days are automatically marked as rejected.</CardDescription>
           <div className="mt-4 flex flex-col gap-4 sm:flex-row sm:items-center">
             <Input
               placeholder="Search descriptions, methods..."
@@ -215,7 +224,7 @@ export default function TransactionsPage() {
               <TableBody>
                 {filteredAndSortedTransactions.length > 0 ? (
                   filteredAndSortedTransactions.map((tx) => (
-                    <TableRow key={tx.id} className="hover:bg-accent/20"> {/* Lighter hover */}
+                    <TableRow key={tx.id} className="hover:bg-accent/20">
                       <TableCell>{getTransactionIcon(tx.type)}</TableCell>
                       <TableCell>{format(parseISO(tx.date), 'PP pp')}</TableCell>
                       <TableCell className="font-medium">{tx.description}</TableCell>
@@ -240,7 +249,8 @@ export default function TransactionsPage() {
                           "text-right font-semibold",
                            tx.type === 'Income' || tx.type === 'Deposit' ? "text-green-600" : 
                            tx.type === 'Expense' || (tx.type === 'Withdrawal' && tx.status !== 'Rejected') ? "text-red-600" :
-                           (tx.type === 'Withdrawal' && tx.status === 'Rejected') ? "text-muted-foreground" : "" // Muted if rejected withdrawal
+                           (tx.type === 'Withdrawal' && tx.status === 'Rejected') ? "text-muted-foreground" :
+                           (tx.status === 'Rejected' ? "text-muted-foreground" : "") // Muted if any other rejected transaction
                         )}
                       >
                         {tx.type === 'Income' || tx.type === 'Deposit' ? '+' : (tx.type === 'Expense' || tx.type === 'Withdrawal' ? '-' : '')}
@@ -273,3 +283,4 @@ export default function TransactionsPage() {
     </div>
   );
 }
+
