@@ -13,6 +13,7 @@ export const SUPPORTED_CURRENCIES: Currency[] = [
   { code: 'CNY', symbol: '¥', name: 'Chinese Yuan' },
   { code: 'BRL', symbol: 'R$', name: 'Brazilian Real' },
   { code: 'ZAR', symbol: 'R', name: 'South African Rand' },
+  { code: 'CAD', symbol: '$', name: 'Canadian Dollar' },
 ];
 
 export const DEFAULT_CURRENCY_CODE = 'USD';
@@ -30,3 +31,4 @@ export const getDefaultCurrency = (): Currency => {
   }
   return defaultCurrency;
 };
+
