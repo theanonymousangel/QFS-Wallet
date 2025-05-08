@@ -26,8 +26,8 @@ export function AccountInfo() {
 
   const connectionOptions = [
     { label: 'Withdraw to Bank', icon: BankIcon, href: '/withdraw' },
-    { label: 'Apple Wallet', icon: AppleWalletIcon, action: () => toast({ title: "Currently unavailable!", description: "This feature is not yet available." }) },
     { label: 'QFS System Card', icon: CreditCard, href: '/withdraw' },
+    { label: 'Apple Wallet', icon: AppleWalletIcon, action: () => toast({ title: "Currently unavailable!", description: "This feature is not yet available." }) },
     { label: 'Google Wallet', icon: GoogleWalletIcon, action: () => toast({ title: "Currently unavailable!", description: "This feature is not yet available." }) },
   ];
 
