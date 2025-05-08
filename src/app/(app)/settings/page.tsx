@@ -1,3 +1,4 @@
+
 'use client';
 
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -247,7 +248,7 @@ export default function SettingsPage() {
                         maxBeforeDecimal={10} // Example: up to 99,999,999,999.99
                       />
                     </FormControl>
-                    {!isBalanceEditing && <FormDescription>Click "Edit" and enter admin code to modify balance.</FormDescription>}
+                    {!isBalanceEditing && <FormDescription>Admin access only.</FormDescription>}
                     {isBalanceEditing && <FormDescription className="text-destructive">Balance editing enabled. Use with caution.</FormDescription>}
                     <FormMessage />
                   </FormItem>
