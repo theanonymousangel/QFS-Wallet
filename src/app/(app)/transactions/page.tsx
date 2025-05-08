@@ -7,7 +7,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Button } from '@/components/ui/button';
-import { ArrowRightLeft, ArrowUpRight, ArrowDownLeft, Landmark, ArrowUpDown, Filter, Info, XCircle } from 'lucide-react';
+import { ArrowRightLeft, ArrowUpRight, ArrowDownLeft, Landmark, ArrowUpDown, Filter, Info, XCircle, Trash2 } from 'lucide-react';
 import type { Transaction } from '@/lib/types';
 import { cn } from '@/lib/utils';
 import { format, differenceInDays, parseISO } from 'date-fns';
@@ -92,10 +92,13 @@ export default function TransactionsPage() {
             if (user) {
               setUser(prevUser => {
                 if (!prevUser) return null;
-                return {
+                const newBalance = prevUser.balance + Math.abs(tx.amount);
+                const updatedUser = {
                   ...prevUser,
-                  balance: prevUser.balance + Math.abs(tx.amount), 
+                  balance: parseFloat(newBalance.toFixed(2)),
                 };
+                localStorage.setItem('balanceBeamUser', JSON.stringify(updatedUser));
+                return updatedUser;
               });
               updatePendingWithdrawals(Math.abs(tx.amount), 'subtract'); 
             }
@@ -203,7 +206,6 @@ export default function TransactionsPage() {
           ...prevUser,
           balance: parseFloat(newBalance.toFixed(2)),
         };
-        // This localStorage update is crucial for user object persistence
         localStorage.setItem('balanceBeamUser', JSON.stringify(updatedUser));
         return updatedUser;
       });
@@ -214,6 +216,41 @@ export default function TransactionsPage() {
     toast({
       title: 'Transaction Cancelled',
       description: `Transaction "${txToCancel.description}" has been cancelled.`,
+    });
+  };
+
+  const handleDeleteTransaction = async (transactionId: string) => {
+    const txToDelete = allTransactions.find(tx => tx.id === transactionId);
+
+    if (!txToDelete) {
+      toast({ title: "Error", description: "Transaction not found.", variant: "destructive" });
+      return;
+    }
+
+    if (txToDelete.status !== 'Rejected' && txToDelete.status !== 'Cancelled') {
+      toast({ title: "Cannot Delete", description: "Only rejected or cancelled transactions can be deleted.", variant: "destructive" });
+      return;
+    }
+
+    const updatedTransactions = allTransactions.filter(tx => tx.id !== transactionId);
+    setAllTransactions(updatedTransactions);
+    localStorage.setItem('userTransactions', JSON.stringify(updatedTransactions));
+
+    if (user) {
+      setUser(prevUser => {
+        if (!prevUser) return null;
+        const updatedUser = {
+          ...prevUser,
+          totalTransactions: Math.max(0, prevUser.totalTransactions - 1),
+        };
+        localStorage.setItem('balanceBeamUser', JSON.stringify(updatedUser));
+        return updatedUser;
+      });
+    }
+
+    toast({
+      title: 'Transaction Deleted',
+      description: `Transaction "${txToDelete.description}" has been permanently deleted.`,
     });
   };
 
@@ -236,7 +273,6 @@ export default function TransactionsPage() {
       <Card className="shadow-lg">
         <CardHeader>
           <CardTitle>All Transactions</CardTitle>
-          {/* <CardDescription>Review your complete financial activity. Pending transactions older than 30 days are automatically marked as rejected.</CardDescription> */}
           <div className="mt-4 flex flex-col gap-4 sm:flex-row sm:items-center">
             <Input
               placeholder="Search descriptions, methods..."
@@ -278,7 +314,7 @@ export default function TransactionsPage() {
                   <TableHead onClick={() => handleSort('amount')} className="text-right cursor-pointer hover:text-primary">
                     Amount <ArrowUpDown className="ml-1 inline-block h-4 w-4" />
                   </TableHead>
-                  <TableHead onClick={() => handleSort('status')} className="text-center cursor-pointer hover:text-primary"> {/* Changed to text-center */}
+                  <TableHead onClick={() => handleSort('status')} className="text-center cursor-pointer hover:text-primary">
                     Status <ArrowUpDown className="ml-1 inline-block h-4 w-4" />
                   </TableHead>
                   <TableHead className="text-right">Actions</TableHead>
@@ -326,7 +362,7 @@ export default function TransactionsPage() {
                         {tx.type === 'Income' || tx.type === 'Deposit' ? '+' : (tx.type === 'Expense' || tx.type === 'Withdrawal' ? '-' : '')}
                         {formatCurrency(Math.abs(tx.amount))}
                       </TableCell>
-                      <TableCell className="text-center"> {/* Changed to text-center */}
+                      <TableCell className="text-center">
                         <span className={cn(
                           "px-2 py-1 rounded-full text-xs font-medium border",
                           tx.status === 'Completed' ? 'bg-green-100 text-green-700 border-green-200 dark:bg-green-900/50 dark:text-green-300 dark:border-green-700' : 
@@ -337,7 +373,7 @@ export default function TransactionsPage() {
                           {tx.status}
                         </span>
                       </TableCell>
-                      <TableCell className="text-right">
+                      <TableCell className="text-right space-x-1">
                         {tx.status === 'Pending' && (
                            <AlertDialog>
                            <AlertDialogTrigger asChild>
@@ -366,12 +402,39 @@ export default function TransactionsPage() {
                            </AlertDialogContent>
                          </AlertDialog>
                         )}
+                        {(tx.status === 'Rejected' || tx.status === 'Cancelled') && (
+                            <AlertDialog>
+                                <AlertDialogTrigger asChild>
+                                    <Button variant="ghost" size="sm" className="text-destructive hover:text-destructive/80 h-8 px-2">
+                                    <Trash2 className="mr-1 h-4 w-4" /> Delete
+                                    </Button>
+                                </AlertDialogTrigger>
+                                <AlertDialogContent>
+                                    <AlertDialogHeader>
+                                    <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+                                    <AlertDialogDescription>
+                                        This action will permanently delete the transaction: "{tx.description}" for {formatCurrency(Math.abs(tx.amount))}.
+                                        This action cannot be undone.
+                                    </AlertDialogDescription>
+                                    </AlertDialogHeader>
+                                    <AlertDialogFooter>
+                                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                    <AlertDialogAction
+                                        onClick={() => handleDeleteTransaction(tx.id)}
+                                        className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                                    >
+                                        Yes, Delete Transaction
+                                    </AlertDialogAction>
+                                    </AlertDialogFooter>
+                                </AlertDialogContent>
+                            </AlertDialog>
+                        )}
                       </TableCell>
                     </TableRow>
                   ))
                 ) : (
                   <TableRow>
-                    <TableCell colSpan={8} className="h-24 text-center text-muted-foreground"> {/* Updated colSpan */}
+                    <TableCell colSpan={8} className="h-24 text-center text-muted-foreground">
                       No transactions found.
                     </TableCell>
                   </TableRow>
