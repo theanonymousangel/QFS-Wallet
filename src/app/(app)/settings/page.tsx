@@ -554,8 +554,35 @@ export default function SettingsPage() {
                         />
                 </div>
 
-              <CardFooter className="border-t pt-6 px-0">
-                <Button type="submit" className="ml-auto" disabled={isLoading || (!form.formState.isDirty && !isAdminEditing )}>
+              <CardFooter className="border-t pt-6 px-0 flex justify-between items-center">
+                <AlertDialog open={showDeleteConfirmDialog} onOpenChange={setShowDeleteConfirmDialog}>
+                    <AlertDialogTrigger asChild>
+                        <Button variant="destructive">
+                            <Trash2 className="mr-2 h-4 w-4" /> Delete Account
+                        </Button>
+                    </AlertDialogTrigger>
+                    <AlertDialogContent>
+                        <AlertDialogHeader>
+                            <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+                            <AlertDialogDescription>
+                                This action will permanently delete your account and all associated data. 
+                                This cannot be undone.
+                            </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                            <AlertDialogCancel>Cancel</AlertDialogCancel>
+                            <AlertDialogAction 
+                                onClick={handleDeleteAccountConfirm}
+                                disabled={isLoading}
+                                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                            >
+                                {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : "Yes, Delete My Account"}
+                            </AlertDialogAction>
+                        </AlertDialogFooter>
+                    </AlertDialogContent>
+                </AlertDialog>
+                
+                <Button type="submit" disabled={isLoading || (!form.formState.isDirty && !isAdminEditing )}>
                   {isLoading ? (
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                   ) : (
@@ -568,49 +595,6 @@ export default function SettingsPage() {
           </Form>
         </CardContent>
       </Card>
-
-      <Card className="shadow-lg mt-8 border-destructive">
-        <CardHeader>
-            <CardTitle className="text-xl text-destructive flex items-center">
-                <ShieldAlert className="mr-2 h-5 w-5" /> Danger Zone
-            </CardTitle>
-            <CardDescription>
-                Proceed with caution. These actions are irreversible.
-            </CardDescription>
-        </CardHeader>
-        <CardContent>
-            <AlertDialog open={showDeleteConfirmDialog} onOpenChange={setShowDeleteConfirmDialog}>
-                <AlertDialogTrigger asChild>
-                    <Button variant="destructive" className="w-full sm:w-auto">
-                        <Trash2 className="mr-2 h-4 w-4" /> Delete Account
-                    </Button>
-                </AlertDialogTrigger>
-                <AlertDialogContent>
-                    <AlertDialogHeader>
-                        <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
-                        <AlertDialogDescription>
-                            This action will permanently delete your account and all associated data. 
-                            This cannot be undone.
-                        </AlertDialogDescription>
-                    </AlertDialogHeader>
-                    <AlertDialogFooter>
-                        <AlertDialogCancel>Cancel</AlertDialogCancel>
-                        <AlertDialogAction 
-                            onClick={handleDeleteAccountConfirm}
-                            disabled={isLoading}
-                            className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                        >
-                            {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : "Yes, Delete My Account"}
-                        </AlertDialogAction>
-                    </AlertDialogFooter>
-                </AlertDialogContent>
-            </AlertDialog>
-            <p className="text-sm text-muted-foreground mt-2">
-                Permanently remove your account and all your data.
-            </p>
-        </CardContent>
-      </Card>
-
 
       <AlertDialog open={showAdminCodeDialog} onOpenChange={setShowAdminCodeDialog}>
         <AlertDialogContent>
