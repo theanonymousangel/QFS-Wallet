@@ -62,10 +62,11 @@ export function AppShell({ children }: { children: ReactNode }) {
   }
 
   if (!user) {
-    // This case should ideally be handled by the useEffect above or a middleware.
-    // Returning null while useEffect triggers redirection.
-     // Redirect inside useEffect to avoid rendering during render phase
-    // The component will return null or a loader while redirecting.
+     React.useEffect(() => {
+        if (typeof window !== 'undefined') { // Ensure router.replace is only called client-side
+            router.replace('/login');
+        }
+    }, [router]);
     return (
       <div className="flex h-screen items-center justify-center bg-background">
         <Loader2 className="h-12 w-12 animate-spin text-primary" />
@@ -81,16 +82,18 @@ export function AppShell({ children }: { children: ReactNode }) {
     { href: '/settings', label: 'Settings', icon: Settings },
   ];
 
-  const getInitials = (name: string = '') => { 
-    const names = name.split(' ');
-    if (names.length > 1 && names[0] && names[names.length -1]) {
-      return `${names[0][0]}${names[names.length - 1][0]}`.toUpperCase();
+  const getInitials = (firstName?: string, lastName?: string) => { 
+    if (firstName && lastName) {
+      return `${firstName[0]}${lastName[0]}`.toUpperCase();
     }
-    if (name.length > 0) return name.substring(0, 2).toUpperCase(); 
+    if (firstName) {
+      return `${firstName.substring(0,2)}`.toUpperCase();
+    }
     return '??'; 
   };
 
   const userFullName = user ? `${user.firstName} ${user.lastName}` : 'User';
+  const userInitials = getInitials(user?.firstName, user?.lastName);
 
 
   const sidebarContent = (isMobile?: boolean) => (
@@ -148,8 +151,8 @@ export function AppShell({ children }: { children: ReactNode }) {
               <DropdownMenuTrigger asChild>
                 <Button variant="ghost" size="icon" className="rounded-full">
                   <Avatar className="h-9 w-9">
-                    <AvatarImage src="https://picsum.photos/40/40" alt={userFullName} data-ai-hint="user avatar" />
-                    <AvatarFallback>{getInitials(userFullName)}</AvatarFallback>
+                    {/* Removed AvatarImage to always show fallback */}
+                    <AvatarFallback>{userInitials}</AvatarFallback>
                   </Avatar>
                 </Button>
               </DropdownMenuTrigger>
@@ -175,5 +178,6 @@ export function AppShell({ children }: { children: ReactNode }) {
     </div>
   );
 }
+
 
 
