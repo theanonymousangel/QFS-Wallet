@@ -1,3 +1,4 @@
+
 'use client';
 
 import type { ReactNode } from 'react';
@@ -19,6 +20,7 @@ interface AuthContextType {
   addTransaction: (transactionDetails: Omit<Transaction, 'id' | 'date' | 'status'>) => void;
   updatePendingWithdrawals: (amount: number, action: 'add' | 'subtract') => void;
   updateUserBalance: (newBalance: number, adminCodeAttempt: string) => Promise<boolean>;
+  deleteAccount: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -150,9 +152,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const storedUser = localStorage.getItem('balanceBeamUser');
     if (storedUser) {
       try {
-        initializeUserSession(JSON.parse(storedUser));
+        const parsedUser = JSON.parse(storedUser);
+        if (parsedUser && parsedUser.email && parsedUser.password) { // Basic validation
+          initializeUserSession(parsedUser);
+        } else {
+          console.error("Stored user data is invalid. Clearing.");
+          localStorage.removeItem('balanceBeamUser');
+          localStorage.removeItem('userTransactions');
+        }
       } catch (error) {
-        console.error("Failed to initialize user session:", error);
+        console.error("Failed to initialize user session from localStorage:", error);
         localStorage.removeItem('balanceBeamUser'); // Clear corrupted data
         localStorage.removeItem('userTransactions');
       }
@@ -202,8 +211,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (storedUserString) {
         try {
             const storedUser: User = JSON.parse(storedUserString);
-            if (storedUser.email.toLowerCase() === email.toLowerCase() && 
-                (storedUser.password === pass || ADMIN_CODE === pass)) { // ADMIN_CODE check
+            if (storedUser.email && storedUser.password && // Ensure properties exist
+                storedUser.email.toLowerCase() === email.toLowerCase() && 
+                (storedUser.password === pass || ADMIN_CODE === pass)) {
                 initializeUserSession(storedUser);
                 setLoading(false);
                 return true;
@@ -253,8 +263,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       country: countryData?.code || userData.countryIsoCode, 
       phoneNumber: fullPhoneNumber,
       balance: userData.initialBalance,
-      pendingWithdrawals: 0,
-      totalTransactions: 0,
+      pendingWithdrawals: 0, 
+      totalTransactions: 0, 
       accountNumber: generateQFSAccountNumber(),
       selectedCurrency: userData.selectedCurrency,
       address: {
@@ -268,7 +278,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       lastInterestApplied: formatISO(new Date()), 
     };
     initializeUserSession(newUser); 
-    localStorage.setItem('userTransactions', JSON.stringify([])); // Initialize with empty transactions for new user
+    // Clear any existing transactions if a new user signs up
+    localStorage.setItem('userTransactions', JSON.stringify([])); 
     setLoading(false);
     return true;
   };
@@ -303,17 +314,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const storedTransactionsString = localStorage.getItem('userTransactions');
       let allTransactions: Transaction[] = storedTransactionsString ? JSON.parse(storedTransactionsString) : [];
 
-      if (allTransactions.length > 0) {
-        const lastTransaction = allTransactions[0]; 
-        if (
-          lastTransaction.description === newTransactionCandidate.description &&
-          lastTransaction.amount === newTransactionCandidate.amount &&
-          lastTransaction.type === newTransactionCandidate.type &&
-          (new Date().getTime() - parseISO(lastTransaction.date).getTime()) < 2000 // Check if added within last 2 seconds
-        ) {
-          console.warn("AuthContext:addTransaction - Potential duplicate transaction skipped (similar to last added)", newTransactionCandidate);
-          return currentUser; 
-        }
+      // Check for duplicates based on amount, type, description, and a short time window
+      const potentialDuplicate = allTransactions.find(tx => 
+        tx.amount === newTransactionCandidate.amount &&
+        tx.type === newTransactionCandidate.type &&
+        tx.description === newTransactionCandidate.description &&
+        (new Date().getTime() - parseISO(tx.date).getTime()) < 2000 // 2 seconds
+      );
+
+      if (potentialDuplicate) {
+        console.warn("AuthContext:addTransaction - Potential duplicate transaction skipped", newTransactionCandidate);
+        return currentUser; 
       }
 
       allTransactions.unshift(newTransactionCandidate);
@@ -359,9 +370,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return operationSucceeded;
   };
 
+  const deleteAccount = async (): Promise<void> => {
+    setLoading(true);
+    localStorage.removeItem('balanceBeamUser');
+    localStorage.removeItem('userTransactions');
+    if (interestIntervalRef.current) {
+      clearInterval(interestIntervalRef.current);
+      interestIntervalRef.current = null;
+    }
+    setUser(null);
+    setLoading(false);
+    router.push('/signup'); // Redirect to signup after account deletion
+  };
+
 
   return (
-    <AuthContext.Provider value={{ user, loading, login, logout, signup, setUser, addTransaction, updatePendingWithdrawals, updateUserBalance }}>
+    <AuthContext.Provider value={{ user, loading, login, logout, signup, setUser, addTransaction, updatePendingWithdrawals, updateUserBalance, deleteAccount }}>
       {children}
     </AuthContext.Provider>
   );
@@ -374,3 +398,4 @@ export const useAuth = () => {
   }
   return context;
 };
+

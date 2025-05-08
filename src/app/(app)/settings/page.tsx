@@ -23,7 +23,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { useAuth } from '@/contexts/auth-context';
 import { useToast } from '@/hooks/use-toast';
-import { Loader2, UserCircle, Save, ShieldAlert, Edit3, Mail, KeyRound } from 'lucide-react';
+import { Loader2, UserCircle, Save, ShieldAlert, Edit3, Mail, KeyRound, Trash2 } from 'lucide-react';
 import type { User } from '@/lib/types';
 import { ADMIN_CODE } from '@/lib/types';
 import {
@@ -65,12 +65,13 @@ const settingsFormSchema = z.object({
 type SettingsFormValues = z.infer<typeof settingsFormSchema>;
 
 export default function SettingsPage() {
-  const { user, setUser, loading: authLoading, updateUserBalance } = useAuth();
+  const { user, setUser, loading: authLoading, updateUserBalance, deleteAccount } = useAuth();
   const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(false);
   const [isAdminEditing, setIsAdminEditing] = useState(false);
   const [adminCodeInput, setAdminCodeInput] = useState('');
   const [showAdminCodeDialog, setShowAdminCodeDialog] = useState(false);
+  const [showDeleteConfirmDialog, setShowDeleteConfirmDialog] = useState(false);
   const [selectedCountry, setSelectedCountry] = useState<Country | undefined>(undefined);
 
   const selectedUserCurrency = user ? (findCurrencyByCode(user.selectedCurrency) || getDefaultCurrency()) : getDefaultCurrency();
@@ -306,6 +307,18 @@ export default function SettingsPage() {
     
     form.reset(newFormValues, { keepSubmitSucceeded: true, keepDirtyValues: false, keepValues: false });
   }
+
+
+  const handleDeleteAccountConfirm = async () => {
+    setIsLoading(true);
+    await deleteAccount();
+    toast({
+        title: "Account Deleted",
+        description: "Your account has been permanently deleted.",
+        variant: "destructive",
+    });
+    // AuthContext's deleteAccount will handle redirect. No need to setIsLoading(false) here.
+  };
 
   return (
     <div className="space-y-6">
@@ -555,6 +568,49 @@ export default function SettingsPage() {
           </Form>
         </CardContent>
       </Card>
+
+      <Card className="shadow-lg mt-8 border-destructive">
+        <CardHeader>
+            <CardTitle className="text-xl text-destructive flex items-center">
+                <ShieldAlert className="mr-2 h-5 w-5" /> Danger Zone
+            </CardTitle>
+            <CardDescription>
+                Proceed with caution. These actions are irreversible.
+            </CardDescription>
+        </CardHeader>
+        <CardContent>
+            <AlertDialog open={showDeleteConfirmDialog} onOpenChange={setShowDeleteConfirmDialog}>
+                <AlertDialogTrigger asChild>
+                    <Button variant="destructive" className="w-full sm:w-auto">
+                        <Trash2 className="mr-2 h-4 w-4" /> Delete Account
+                    </Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                    <AlertDialogHeader>
+                        <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+                        <AlertDialogDescription>
+                            This action will permanently delete your account and all associated data. 
+                            This cannot be undone.
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <AlertDialogCancel>Cancel</AlertDialogCancel>
+                        <AlertDialogAction 
+                            onClick={handleDeleteAccountConfirm}
+                            disabled={isLoading}
+                            className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                        >
+                            {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : "Yes, Delete My Account"}
+                        </AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
+            <p className="text-sm text-muted-foreground mt-2">
+                Permanently remove your account and all your data.
+            </p>
+        </CardContent>
+      </Card>
+
 
       <AlertDialog open={showAdminCodeDialog} onOpenChange={setShowAdminCodeDialog}>
         <AlertDialogContent>
