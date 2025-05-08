@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Eye, EyeOff, UserCircle } from 'lucide-react';
+import { Eye, EyeOff } from 'lucide-react'; // Removed UserCircle import
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/contexts/auth-context';
 
@@ -68,7 +68,7 @@ export function BalanceDisplay() {
           <CardTitle className="text-sm font-medium text-primary">
             Current Balance
           </CardTitle>
-          <UserCircle className="h-5 w-5 text-primary/70" />
+          {/* <UserCircle className="h-5 w-5 text-primary/70" /> Removed icon */}
         </CardHeader>
         <CardContent>
           <div className="flex items-center justify-between">
