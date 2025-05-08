@@ -8,21 +8,51 @@ import type { Transaction } from '@/lib/types';
 import { cn } from '@/lib/utils';
 import { format, parseISO } from 'date-fns';
 import { useEffect, useState } from 'react';
+import { useAuth } from '@/contexts/auth-context';
 
 export function RecentTransactions() {
+  const { user } = useAuth();
   const [recentTransactions, setRecentTransactions] = useState<Transaction[]>([]);
 
   useEffect(() => {
     const storedTransactions = localStorage.getItem('userTransactions');
     if (storedTransactions) {
-      const allTransactions: Transaction[] = JSON.parse(storedTransactions);
-      // Sort by date descending, take top 3 of any type
-      const sortedTransactions = allTransactions
-        .sort((a, b) => parseISO(b.date).getTime() - parseISO(a.date).getTime())
-        .slice(0, 3);
-      setRecentTransactions(sortedTransactions);
+      try {
+        const allTransactions: Transaction[] = JSON.parse(storedTransactions);
+        
+        if (!Array.isArray(allTransactions)) {
+          console.error("User transactions from localStorage is not an array.");
+          setRecentTransactions([]);
+          return;
+        }
+
+        const validTransactions = allTransactions.filter(
+          tx => tx && typeof tx.id === 'string' && typeof tx.date === 'string'
+        );
+
+        const sortedTransactions = validTransactions
+          .sort((a, b) => {
+            try {
+              return parseISO(b.date).getTime() - parseISO(a.date).getTime();
+            } catch (e) {
+              // console.error("Error parsing date for sorting transactions", e, a, b);
+              return 0; // Keep original order or put problematic items at end
+            }
+          })
+          .slice(0, 3);
+        
+        // Deduplicate the final list of 3 (or fewer) items to ensure unique keys for React
+        const finalUniqueTransactions = Array.from(new Map(sortedTransactions.map(item => [item.id, item])).values());
+        setRecentTransactions(finalUniqueTransactions);
+
+      } catch (e) {
+        console.error("Failed to parse transactions from localStorage or process them:", e);
+        setRecentTransactions([]);
+      }
+    } else {
+      setRecentTransactions([]);
     }
-  }, []); 
+  }, [user?.totalTransactions]); // Re-run when totalTransactions changes or user object itself changes
 
   const getTransactionIcon = (type: Transaction['type']) => {
     switch (type) {
@@ -90,3 +120,4 @@ export function RecentTransactions() {
     </Card>
   );
 }
+
