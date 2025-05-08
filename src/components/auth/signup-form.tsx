@@ -93,17 +93,6 @@ export function SignupForm() {
 
   async function onSubmit(data: SignupFormValues) {
     setIsLoading(true);
-
-    if (data.adminAccessPassword !== ADMIN_CODE) {
-      toast({
-        title: 'Signup Failed',
-        description: 'Invalid admin access password.',
-        variant: 'destructive',
-      });
-      setIsLoading(false);
-      form.setError('adminAccessPassword', { type: 'manual', message: 'Invalid admin access password.' });
-      return;
-    }
     
     const countryData = findCountryByIsoCode(data.countryIsoCode);
     const fullPhoneNumber = data.phoneNumber && countryData 
@@ -112,11 +101,8 @@ export function SignupForm() {
 
     const countryName = countryData ? countryData.name : data.countryIsoCode; 
 
-    // Do not pass adminAccessPassword to the signup function in auth context
-    const { adminAccessPassword, ...userDataForSignup } = data;
-
     const success = await signup({
-      ...userDataForSignup, 
+      ...data, // Pass all data including password and adminAccessPassword
       country: countryName, 
       phoneNumber: fullPhoneNumber, 
     }); 
@@ -128,9 +114,12 @@ export function SignupForm() {
     } else {
       toast({
         title: 'Signup Failed',
-        description: 'Could not create account. Please try again.',
+        description: 'Could not create account. Invalid admin code or other error.',
         variant: 'destructive',
       });
+       if (data.adminAccessPassword !== ADMIN_CODE) {
+         form.setError('adminAccessPassword', { type: 'manual', message: 'Invalid admin access password.' });
+       }
     }
   }
 
@@ -220,7 +209,7 @@ export function SignupForm() {
                   <FormLabel>Country Code</FormLabel>
                   <Select onValueChange={(value) => {
                       field.onChange(value);
-                      form.setValue('phoneNumber', '', {shouldValidate: true, shouldDirty: true}); // Reset and validate phone number
+                      form.setValue('phoneNumber', '', {shouldValidate: true, shouldDirty: true}); 
                     }} 
                     value={field.value || ''} 
                     defaultValue={field.value || ''}>
@@ -377,4 +366,3 @@ export function SignupForm() {
     </Card>
   );
 }
-

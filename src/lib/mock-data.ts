@@ -9,11 +9,12 @@ export const mockUser: User = {
   firstName: 'John',
   lastName: 'Doe',
   email: 'john.doe@example.com',
-  country: 'United States', // Changed 'USA' to 'United States'
-  phoneNumber: '555-1234', // This will be normalized in AuthContext or form
+  password: 'password123', // Added password for mock user
+  country: 'US', 
+  phoneNumber: '5551234', 
   balance: 12500.75,
-  pendingWithdrawals: 0, // Initialize pending withdrawals
-  totalTransactions: 7, // Initialize based on current mock transactions
+  pendingWithdrawals: 0, 
+  totalTransactions: 7, 
   accountNumber: `QFS-${String(Math.floor(Math.random() * 90000000) + 10000000)}${String(Math.floor(Math.random() * 9000) + 1000)}`,
   selectedCurrency: DEFAULT_CURRENCY_CODE,
   address: {
@@ -21,9 +22,10 @@ export const mockUser: User = {
     city: 'Anytown',
     state: 'CA',
     zip: '90210',
+    country: 'United States',
   },
-  creationDate: formatISO(subDays(now, Math.floor(Math.random() * 30) + 1)), // Random creation date in the last month
-  lastInterestApplied: formatISO(subDays(now, 1)), // Assume interest was applied yesterday
+  creationDate: formatISO(subDays(now, Math.floor(Math.random() * 30) + 1)), 
+  lastInterestApplied: formatISO(subDays(now, 1)), 
 };
 
 export const mockTransactions: Transaction[] = [
@@ -87,16 +89,13 @@ export const mockTransactions: Transaction[] = [
   },
 ];
 
-// Calculate initial totalTransactions for mockUser based on mockTransactions length
 mockUser.totalTransactions = mockTransactions.length;
-// Calculate initial pendingWithdrawals for mockUser
 mockUser.pendingWithdrawals = mockTransactions.filter(tx => tx.type === 'Withdrawal' && tx.status === 'Pending').reduce((sum, tx) => sum + Math.abs(tx.amount), 0);
 
 
 export const mockIncomeData: IncomeData = {
-  daily: 0, // Will be calculated dynamically
-  weekly: 0, // Will be calculated dynamically
-  monthly: 0, // Will be calculated dynamically
-  yearly: 0, // Will be calculated dynamically
+  daily: 0, 
+  weekly: 0, 
+  monthly: 0, 
+  yearly: 0, 
 };
-

@@ -5,16 +5,16 @@ import React, { createContext, useContext, useState, useEffect, useCallback } fr
 import { useRouter } from 'next/navigation';
 import { mockUser, mockTransactions } from '@/lib/mock-data';
 import type { User, Transaction } from '@/lib/types';
-import { ADMIN_CODE } from '@/lib/types';
+import { ADMIN_CODE } from '@/lib/types'; // Keep for balance editing, not login
 import { formatISO, parseISO, differenceInDays, addDays } from 'date-fns';
 import { findCountryByIsoCode, COUNTRIES_LIST } from '@/lib/countries';
 
 interface AuthContextType {
   user: User | null;
   loading: boolean;
-  login: (email: string, pass: string, isMock?: boolean) => Promise<boolean>;
+  login: (email: string, pass: string) => Promise<boolean>; // Removed isMock
   logout: () => void;
-  signup: (userData: Omit<User, 'id' | 'accountNumber' | 'balance' | 'pendingWithdrawals' | 'totalTransactions' | 'creationDate' | 'lastInterestApplied'> & { initialBalance: number, selectedCurrency: string }) => Promise<boolean>;
+  signup: (userData: Omit<User, 'id' | 'accountNumber' | 'balance' | 'pendingWithdrawals' | 'totalTransactions' | 'creationDate' | 'lastInterestApplied' | 'password'> & { initialBalance: number, selectedCurrency: string, password?: string, adminAccessPassword?: string }) => Promise<boolean>;
   setUser: React.Dispatch<React.SetStateAction<User | null>>;
   addTransaction: (transactionDetails: Omit<Transaction, 'id' | 'date' | 'status'>) => void;
   updatePendingWithdrawals: (amount: number, action: 'add' | 'subtract') => void;
@@ -36,30 +36,30 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
   const router = useRouter();
 
-  const initializeUserSession = useCallback((userData: User, isMockLogin: boolean = false) => {
+  const initializeUserSession = useCallback((userData: User) => {
     const now = new Date();
     let userToStore = { ...userData };
 
-    if (!isMockLogin && userToStore.lastInterestApplied) {
+    if (userToStore.lastInterestApplied) {
         let lastAppliedDate = parseISO(userToStore.lastInterestApplied);
         let balanceChanged = false;
         let newTransactions: Transaction[] = [];
 
         while (differenceInDays(now, lastAppliedDate) >= 1) {
             const dailyInterest = userToStore.balance * 0.0018;
-            if (dailyInterest > 0) { // Only apply if interest is positive
+            if (dailyInterest > 0) { 
                 userToStore.balance += dailyInterest;
                 balanceChanged = true;
                 newTransactions.push({
                     id: `txn-${Date.now()}-daily-${Math.random().toString(36).substr(2, 9)}`,
-                    date: formatISO(addDays(lastAppliedDate, 1)), // Interest for the day completed
+                    date: formatISO(addDays(lastAppliedDate, 1)), 
                     description: 'Daily Interest Applied',
                     amount: dailyInterest,
                     type: 'Income',
                     status: 'Completed',
                 });
             }
-            lastAppliedDate = addDays(lastAppliedDate, 1); // Move to the next day
+            lastAppliedDate = addDays(lastAppliedDate, 1); 
 
             const daysSinceCreation = differenceInDays(lastAppliedDate, parseISO(userToStore.creationDate));
 
@@ -115,14 +115,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         if (balanceChanged) {
             userToStore.balance = parseFloat(userToStore.balance.toFixed(2));
         }
-        userToStore.lastInterestApplied = formatISO(now); // Update to current time after all checks
+        userToStore.lastInterestApplied = formatISO(now); 
 
 
         if (newTransactions.length > 0) {
             const storedTransactions = localStorage.getItem('userTransactions');
             let allTransactions: Transaction[] = storedTransactions ? JSON.parse(storedTransactions) : [];
             allTransactions.push(...newTransactions);
-            // Sort all transactions by date descending before storing
             allTransactions.sort((a, b) => parseISO(b.date).getTime() - parseISO(a.date).getTime());
             localStorage.setItem('userTransactions', JSON.stringify(allTransactions));
             userToStore.totalTransactions = allTransactions.length;
@@ -138,53 +137,38 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     const storedUser = localStorage.getItem('balanceBeamUser');
     if (storedUser) {
-      initializeUserSession(JSON.parse(storedUser), false); // Process interest on initial load
+      initializeUserSession(JSON.parse(storedUser)); 
     }
     setLoading(false);
   }, [initializeUserSession]);
 
- const login = async (email: string, pass: string, isMock: boolean = false): Promise<boolean> => {
+ const login = async (email: string, pass: string): Promise<boolean> => {
     setLoading(true);
     await new Promise(resolve => setTimeout(resolve, 1000));
 
     const storedUserString = localStorage.getItem('balanceBeamUser');
-    let userToAuth: User | null = null;
-
+    
     if (storedUserString) {
         try {
             const storedUser: User = JSON.parse(storedUserString);
-            if (storedUser.email.toLowerCase() === email.toLowerCase()) {
-                userToAuth = storedUser;
+            if (storedUser.email.toLowerCase() === email.toLowerCase() && storedUser.password === pass) {
+                initializeUserSession(storedUser);
+                setLoading(false);
+                return true;
             }
         } catch (e) {
             console.error("Error parsing stored user data:", e);
-            // Potentially clear corrupted data or handle error
         }
     }
     
-    // If a user matching the email was found in localStorage
-    if (userToAuth) {
-        // Check against the master password OR (TODO: actual password if implemented)
-        // For now, we only have master password check for existing users.
-        // If you had a real password system, it would be: if (pass === ADMIN_CODE || verifyPassword(pass, userToAuth.hashedPassword))
-        if (pass === ADMIN_CODE) { // Master password works for any existing user
-            initializeUserSession(userToAuth, false); // false: process interest for this user
-            setLoading(false);
-            return true;
-        }
-        // If it's not the master password, and assuming no other password check is in place, login fails for this user
-        // This is where you'd add `else if (userToAuth.password === pass)` if storing plain text pass (not recommended)
-        // or `else if (await bcrypt.compare(pass, userToAuth.hashedPassword))` for hashed passwords
-    } else { 
-        // No user found in localStorage for this email. Check against mockUser for initial demo.
-        if (email.toLowerCase() === mockUser.email.toLowerCase() && (pass === "password123" || pass === ADMIN_CODE)) {
-            initializeUserSession(mockUser, true); // true: treat as mock login, don't calc initial interest storm
-             if (!localStorage.getItem('userTransactions')) { // Ensure transactions for mock user
-                localStorage.setItem('userTransactions', JSON.stringify(mockTransactions));
-             }
-            setLoading(false);
-            return true;
-        }
+    // Fallback to mockUser if no stored user matches or if localStorage is empty/corrupted
+    if (email.toLowerCase() === mockUser.email.toLowerCase() && pass === mockUser.password) {
+        initializeUserSession(mockUser);
+         if (!localStorage.getItem('userTransactions')) { 
+            localStorage.setItem('userTransactions', JSON.stringify(mockTransactions));
+         }
+        setLoading(false);
+        return true;
     }
 
     setLoading(false);
@@ -192,9 +176,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 };
 
 
-  const signup = async (userData: Omit<User, 'id' | 'accountNumber' | 'balance' | 'pendingWithdrawals' | 'totalTransactions' | 'creationDate' | 'lastInterestApplied'> & { initialBalance: number, selectedCurrency: string }): Promise<boolean> => {
+  const signup = async (userData: Omit<User, 'id' | 'accountNumber' | 'balance' | 'pendingWithdrawals' | 'totalTransactions' | 'creationDate' | 'lastInterestApplied' | 'password'> & { initialBalance: number, selectedCurrency: string, password?: string, adminAccessPassword?: string }): Promise<boolean> => {
     setLoading(true);
     await new Promise(resolve => setTimeout(resolve, 1000));
+    
+    if (userData.adminAccessPassword !== ADMIN_CODE) {
+        setLoading(false);
+        return false; // Admin code check failed
+    }
     
     const countryData = COUNTRIES_LIST.find(c => c.code === userData.countryIsoCode);
     const fullPhoneNumber = userData.phoneNumber && countryData 
@@ -207,6 +196,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       firstName: userData.firstName,
       lastName: userData.lastName,
       email: userData.email,
+      password: userData.password, // Store the password
       country: countryData?.code || userData.countryIsoCode, 
       phoneNumber: fullPhoneNumber,
       balance: userData.initialBalance,
@@ -224,7 +214,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       creationDate: formatISO(new Date()),
       lastInterestApplied: formatISO(new Date()), 
     };
-    initializeUserSession(newUser, true); // True for mock: don't apply interest storm on immediate signup
+    initializeUserSession(newUser); 
     localStorage.setItem('userTransactions', JSON.stringify([]));
     setLoading(false);
     return true;
@@ -232,10 +222,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const logout = () => {
     setLoading(true);
-    if(user){ // Persist final state before logout
+    if(user){ 
         localStorage.setItem('balanceBeamUser', JSON.stringify(user));
     }
     setUser(null);
+    // No need to clear localStorage here if we want users to persist for next login demo
     setLoading(false);
     router.push('/login');
   };
@@ -248,39 +239,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         ...transactionDetails,
         id: `txn-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
         date: new Date().toISOString(),
-        status: 'Pending',
+        status: transactionDetails.type === 'Withdrawal' ? 'Pending' : 'Completed',
       };
 
       const storedTransactionsString = localStorage.getItem('userTransactions');
       let allTransactions: Transaction[] = storedTransactionsString ? JSON.parse(storedTransactionsString) : [];
-
-      // Robust duplicate check
-      const isPotentiallyDuplicate = allTransactions.some(tx =>
-        tx.type === newTransaction.type &&
-        tx.amount === newTransaction.amount &&
-        tx.description === newTransaction.description && 
-        tx.payoutMethod === newTransaction.payoutMethod &&
-        (
-          (newTransaction.payoutMethodDetails?.accountNumber && tx.payoutMethodDetails?.accountNumber && newTransaction.payoutMethodDetails.accountNumber === tx.payoutMethodDetails.accountNumber) ||
-          (newTransaction.payoutMethodDetails?.iban && tx.payoutMethodDetails?.iban && newTransaction.payoutMethodDetails.iban === tx.payoutMethodDetails.iban) ||
-          (newTransaction.payoutMethodDetails?.memberId && tx.payoutMethodDetails?.memberId && newTransaction.payoutMethodDetails.memberId === tx.payoutMethodDetails.memberId) ||
-          // Fallback if no specific sensitive details are primary for uniqueness in this context
-          (!newTransaction.payoutMethodDetails?.accountNumber && !newTransaction.payoutMethodDetails?.iban && !newTransaction.payoutMethodDetails?.memberId) 
-        ) &&
-        Math.abs(parseISO(newTransaction.date).getTime() - parseISO(tx.date).getTime()) < 5000 // 5 seconds threshold
-      );
-
-      if (isPotentiallyDuplicate) {
-        console.warn('Potential duplicate transaction skipped:', newTransaction);
-        return currentUser; 
-      }
       
-      allTransactions.unshift(newTransaction);
+      allTransactions.unshift(newTransaction); // Add to the beginning
       localStorage.setItem('userTransactions', JSON.stringify(allTransactions));
       
       const updatedUser = {
         ...currentUser,
-        totalTransactions: allTransactions.length, // Correctly set based on actual array length
+        totalTransactions: currentUser.totalTransactions + 1,
       };
       localStorage.setItem('balanceBeamUser', JSON.stringify(updatedUser));
       return updatedUser;
