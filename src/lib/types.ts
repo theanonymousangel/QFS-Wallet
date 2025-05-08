@@ -28,7 +28,7 @@ export interface Transaction {
   description: string;
   amount: number; 
   type: 'Income' | 'Expense' | 'Withdrawal' | 'Deposit'; 
-  status: 'Completed' | 'Pending' | 'Rejected';
+  status: 'Completed' | 'Pending' | 'Rejected' | 'Cancelled';
   payoutMethod?: 'Bank Transfer' | 'QFS System Card';
   payoutMethodDetails?: { 
     accountNumber?: string;
@@ -54,3 +54,4 @@ export interface IncomeData {
 }
 
 export const ADMIN_CODE = "admin2025";
+

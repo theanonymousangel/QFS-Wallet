@@ -7,7 +7,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Button } from '@/components/ui/button';
-import { ArrowRightLeft, ArrowUpRight, ArrowDownLeft, Landmark, ArrowUpDown, Filter, Info } from 'lucide-react';
+import { ArrowRightLeft, ArrowUpRight, ArrowDownLeft, Landmark, ArrowUpDown, Filter, Info, XCircle } from 'lucide-react';
 import type { Transaction } from '@/lib/types';
 import { cn } from '@/lib/utils';
 import { format, differenceInDays, parseISO } from 'date-fns';
@@ -19,6 +19,17 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import {
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
+    AlertDialogTrigger,
+  } from "@/components/ui/alert-dialog";
 import { findCurrencyByCode, getDefaultCurrency } from '@/lib/currencies';
 
 const getTransactionIcon = (type: Transaction['type']) => {
@@ -163,6 +174,50 @@ export default function TransactionsPage() {
     }
   };
 
+  const handleCancelTransaction = async (transactionId: string) => {
+    const txToCancel = allTransactions.find(tx => tx.id === transactionId);
+
+    if (!txToCancel) {
+      toast({ title: "Error", description: "Transaction not found.", variant: "destructive" });
+      return;
+    }
+
+    if (txToCancel.status !== 'Pending') {
+      toast({ title: "Cannot Cancel", description: "Only pending transactions can be cancelled.", variant: "destructive" });
+      return;
+    }
+
+    const updatedTransactions = allTransactions.map(tx =>
+      tx.id === transactionId ? { ...tx, status: 'Cancelled' as 'Cancelled' } : tx
+    );
+    setAllTransactions(updatedTransactions);
+    localStorage.setItem('userTransactions', JSON.stringify(updatedTransactions));
+
+    if (user && txToCancel.type === 'Withdrawal') {
+      const amountToRefund = Math.abs(txToCancel.amount);
+      
+      setUser(prevUser => {
+        if (!prevUser) return null;
+        const newBalance = prevUser.balance + amountToRefund;
+        const updatedUser = {
+          ...prevUser,
+          balance: parseFloat(newBalance.toFixed(2)),
+        };
+        // This localStorage update is crucial for user object persistence
+        localStorage.setItem('balanceBeamUser', JSON.stringify(updatedUser));
+        return updatedUser;
+      });
+  
+      updatePendingWithdrawals(amountToRefund, 'subtract');
+    }
+
+    toast({
+      title: 'Transaction Cancelled',
+      description: `Transaction "${txToCancel.description}" has been cancelled.`,
+    });
+  };
+
+
   const transactionTypes: (Transaction['type'] | 'all')[] = ['all', 'Income', 'Expense', 'Withdrawal', 'Deposit'];
 
   const renderPayoutDetails = (details?: Transaction['payoutMethodDetails']) => {
@@ -223,9 +278,10 @@ export default function TransactionsPage() {
                   <TableHead onClick={() => handleSort('amount')} className="text-right cursor-pointer hover:text-primary">
                     Amount <ArrowUpDown className="ml-1 inline-block h-4 w-4" />
                   </TableHead>
-                  <TableHead onClick={() => handleSort('status')} className="text-right cursor-pointer hover:text-primary">
+                  <TableHead onClick={() => handleSort('status')} className="text-center cursor-pointer hover:text-primary"> {/* Changed to text-center */}
                     Status <ArrowUpDown className="ml-1 inline-block h-4 w-4" />
                   </TableHead>
+                  <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -262,29 +318,60 @@ export default function TransactionsPage() {
                         className={cn(
                           "text-right font-semibold",
                            tx.type === 'Income' || tx.type === 'Deposit' ? "text-green-600" : 
-                           tx.type === 'Expense' || (tx.type === 'Withdrawal' && tx.status !== 'Rejected') ? "text-red-600" :
-                           (tx.type === 'Withdrawal' && tx.status === 'Rejected') ? "text-muted-foreground" :
-                           (tx.status === 'Rejected' ? "text-muted-foreground" : "")
+                           tx.type === 'Expense' || (tx.type === 'Withdrawal' && tx.status !== 'Rejected' && tx.status !== 'Cancelled') ? "text-red-600" :
+                           (tx.type === 'Withdrawal' && (tx.status === 'Rejected' || tx.status === 'Cancelled')) ? "text-muted-foreground line-through" :
+                           (tx.status === 'Rejected' || tx.status === 'Cancelled' ? "text-muted-foreground line-through" : "")
                         )}
                       >
                         {tx.type === 'Income' || tx.type === 'Deposit' ? '+' : (tx.type === 'Expense' || tx.type === 'Withdrawal' ? '-' : '')}
                         {formatCurrency(Math.abs(tx.amount))}
                       </TableCell>
-                      <TableCell className="text-right">
+                      <TableCell className="text-center"> {/* Changed to text-center */}
                         <span className={cn(
                           "px-2 py-1 rounded-full text-xs font-medium border",
                           tx.status === 'Completed' ? 'bg-green-100 text-green-700 border-green-200 dark:bg-green-900/50 dark:text-green-300 dark:border-green-700' : 
                           tx.status === 'Pending' ? 'bg-yellow-100 text-yellow-700 border-yellow-200 dark:bg-yellow-900/50 dark:text-yellow-300 dark:border-yellow-700' :
-                          'bg-red-100 text-red-700 border-red-200 dark:bg-red-900/50 dark:text-red-300 dark:border-red-700'
+                          tx.status === 'Rejected' ? 'bg-red-100 text-red-700 border-red-200 dark:bg-red-900/50 dark:text-red-300 dark:border-red-700' :
+                          'bg-gray-100 text-gray-700 border-gray-200 dark:bg-gray-900/50 dark:text-gray-300 dark:border-gray-700' // Style for 'Cancelled'
                         )}>
                           {tx.status}
                         </span>
+                      </TableCell>
+                      <TableCell className="text-right">
+                        {tx.status === 'Pending' && (
+                           <AlertDialog>
+                           <AlertDialogTrigger asChild>
+                             <Button variant="ghost" size="sm" className="text-destructive hover:text-destructive/80 h-8 px-2">
+                               <XCircle className="mr-1 h-4 w-4" /> Cancel
+                             </Button>
+                           </AlertDialogTrigger>
+                           <AlertDialogContent>
+                             <AlertDialogHeader>
+                               <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+                               <AlertDialogDescription>
+                                 This action will cancel the pending transaction: "{tx.description}" for {formatCurrency(Math.abs(tx.amount))}.
+                                 {tx.type === 'Withdrawal' && " The amount will be returned to your main balance."}
+                                 This cannot be undone.
+                               </AlertDialogDescription>
+                             </AlertDialogHeader>
+                             <AlertDialogFooter>
+                               <AlertDialogCancel>Back</AlertDialogCancel>
+                               <AlertDialogAction
+                                 onClick={() => handleCancelTransaction(tx.id)}
+                                 className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                               >
+                                 Yes, Cancel Transaction
+                               </AlertDialogAction>
+                             </AlertDialogFooter>
+                           </AlertDialogContent>
+                         </AlertDialog>
+                        )}
                       </TableCell>
                     </TableRow>
                   ))
                 ) : (
                   <TableRow>
-                    <TableCell colSpan={7} className="h-24 text-center text-muted-foreground">
+                    <TableCell colSpan={8} className="h-24 text-center text-muted-foreground"> {/* Updated colSpan */}
                       No transactions found.
                     </TableCell>
                   </TableRow>
