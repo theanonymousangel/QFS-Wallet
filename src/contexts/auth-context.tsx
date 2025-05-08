@@ -1,395 +1,323 @@
+
 'use client';
 
+import type { ReactNode } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import { useRouter } from 'next/navigation';
+import { mockUser, mockTransactions } from '@/lib/mock-data';
 import type { User, Transaction } from '@/lib/types';
 import { ADMIN_CODE } from '@/lib/types';
-import { mockUser, mockTransactions } from '@/lib/mock-data';
-import { useRouter } from 'next/navigation';
-import type { Dispatch, ReactNode, SetStateAction} from 'react';
-import { createContext, useContext, useEffect, useState } from 'react';
-import { formatISO, parseISO, differenceInDays, differenceInWeeks, differenceInMonths, differenceInYears, subDays } from 'date-fns';
-import { DEFAULT_CURRENCY_CODE, findCurrencyByCode } from '@/lib/currencies';
-import { findCountryByIsoCode } from '@/lib/countries'; 
+import { formatISO, parseISO, differenceInDays, addDays, addMonths, addYears } from 'date-fns';
+import { findCountryByIsoCode, COUNTRIES_LIST } from '@/lib/countries';
 
 interface AuthContextType {
   user: User | null;
-  login: (email: string, pass: string) => Promise<boolean>;
-  signup: (userData: Omit<User, 'id' | 'accountNumber' | 'balance' | 'pendingWithdrawals' | 'totalTransactions' | 'creationDate' | 'lastInterestApplied' | 'address' | 'selectedCurrency' | 'country'> & { 
-    initialBalance: number; 
-    selectedCurrency: string;
-    password?: string;
-    countryIsoCode: string; // Use ISO code from signup form
-    phoneNumber: string;
-    addressStreet: string;
-    addressCity: string;
-    addressState: string;
-    addressZip: string;
-  }) => Promise<boolean>;
-  logout: () => void;
   loading: boolean;
-  setUser: Dispatch<SetStateAction<User | null>>;
-  updateUserBalance: (newBalance: number, adminCodeInput?: string) => Promise<boolean>;
-  addTransaction: (transaction: Omit<Transaction, 'id' | 'date' | 'status'>) => void;
-  updatePendingWithdrawals: (amount: number, operation: 'add' | 'subtract') => void;
+  login: (email: string, pass: string, isMock?: boolean) => Promise<boolean>;
+  logout: () => void;
+  signup: (userData: Omit<User, 'id' | 'accountNumber' | 'balance' | 'pendingWithdrawals' | 'totalTransactions' | 'creationDate' | 'lastInterestApplied'> & { initialBalance: number, selectedCurrency: string }) => Promise<boolean>;
+  setUser: React.Dispatch<React.SetStateAction<User | null>>;
+  addTransaction: (transactionDetails: Omit<Transaction, 'id' | 'date' | 'status'>) => void;
+  updatePendingWithdrawals: (amount: number, action: 'add' | 'subtract') => void;
+  updateUserBalance: (newBalance: number, adminCodeAttempt: string) => Promise<boolean>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-export const AuthProvider = ({ children }: { children: ReactNode }) => {
+// Helper to generate a QFS-style account number
+const generateQFSAccountNumber = (): string => {
+  const part1 = String(Math.floor(Math.random() * 90000000) + 10000000); // 8 digits
+  const part2 = String(Math.floor(Math.random() * 9000) + 1000);       // 4 digits
+  return `QFS-${part1}${part2}`;
+};
+
+
+export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const router = useRouter();
 
-  // Helper function to consolidate user session initialization logic
-  const initializeUserSession = (userToLogin: User, isMockUserSetup: boolean = false) => {
-    let userToStore = { ...userToLogin };
+  const initializeUserSession = useCallback((userData: User, isMockLogin: boolean = false) => {
+    const now = new Date();
+    let userToStore = { ...userData };
 
-    // Ensure QFS prefix for account number
-    if (userToStore.accountNumber && typeof userToStore.accountNumber === 'string' && userToStore.accountNumber.startsWith('BB-')) {
-      userToStore.accountNumber = userToStore.accountNumber.replace('BB-', 'QFS-');
-    }
-    // Default values for potentially missing fields
-    userToStore.creationDate = userToStore.creationDate || formatISO(new Date());
-    userToStore.lastInterestApplied = userToStore.lastInterestApplied || formatISO(subDays(new Date(), 1));
-    userToStore.pendingWithdrawals = userToStore.pendingWithdrawals || 0;
-    
-    if (isMockUserSetup) {
-      userToStore.totalTransactions = mockTransactions.length; // Always for mock user setup
-    } else if (userToStore.totalTransactions === undefined) {
-      // For existing users (not mock setup), if totalTransactions is missing, initialize to 0
-      userToStore.totalTransactions = 0; 
-    }
-    // Otherwise, userToStore.totalTransactions retains its existing value from userToLogin.
+    // Apply interest logic if not a mock login (initial load)
+    // For actual login/signup, interest calculation should be based on stored lastInterestApplied
+    if (!isMockLogin && userToStore.lastInterestApplied) {
+        let lastAppliedDate = parseISO(userToStore.lastInterestApplied);
+        let balanceChanged = false;
+        let newTransactions: Transaction[] = [];
 
+        // Daily interest processing
+        while (differenceInDays(now, lastAppliedDate) >= 1) {
+            const dailyInterest = userToStore.balance * 0.0018;
+            userToStore.balance += dailyInterest;
+            lastAppliedDate = addDays(lastAppliedDate, 1);
+            userToStore.lastInterestApplied = formatISO(lastAppliedDate);
+            balanceChanged = true;
+            newTransactions.push({
+                id: `txn-${Date.now()}-daily-${Math.random().toString(36).substr(2, 9)}`,
+                date: formatISO(lastAppliedDate),
+                description: 'Daily Interest Applied',
+                amount: dailyInterest,
+                type: 'Income',
+                status: 'Completed',
+            });
 
-    userToStore.selectedCurrency = userToStore.selectedCurrency || DEFAULT_CURRENCY_CODE;
-    
-    // Standardize country: user.country should store the ISO code.
-    // If it's a name, try to find its code. If it's already a code, validate it.
-    let countryIsoToStore = '';
-    if (userToStore.country) { // user.country might be name or code
-        const countryByCode = findCountryByIsoCode(userToStore.country.toUpperCase());
-        if (countryByCode) {
-            countryIsoToStore = countryByCode.code; // It was a code or a name matching a code
-        } else {
-            const countryByName = COUNTRIES_LIST.find(c => c.name.toLowerCase() === userToStore.country.toLowerCase());
-            if (countryByName) {
-                countryIsoToStore = countryByName.code;
+            // Weekly bonus check (every 7 days from creation)
+            const daysSinceCreationForWeekly = differenceInDays(lastAppliedDate, parseISO(userToStore.creationDate));
+            if (daysSinceCreationForWeekly > 0 && daysSinceCreationForWeekly % 7 === 0) {
+                const weeklyBonus = userToStore.balance * 0.0025;
+                userToStore.balance += weeklyBonus;
+                balanceChanged = true;
+                 newTransactions.push({
+                    id: `txn-${Date.now()}-weekly-${Math.random().toString(36).substr(2, 9)}`,
+                    date: formatISO(lastAppliedDate),
+                    description: 'Weekly Bonus Applied',
+                    amount: weeklyBonus,
+                    type: 'Income',
+                    status: 'Completed',
+                });
+            }
+
+            // Monthly bonus check (every 30 days from creation)
+            const daysSinceCreationForMonthly = differenceInDays(lastAppliedDate, parseISO(userToStore.creationDate));
+            if (daysSinceCreationForMonthly > 0 && daysSinceCreationForMonthly % 30 === 0) {
+                const monthlyBonus = userToStore.balance * 0.05; // 5%
+                userToStore.balance += monthlyBonus;
+                balanceChanged = true;
+                 newTransactions.push({
+                    id: `txn-${Date.now()}-monthly-${Math.random().toString(36).substr(2, 9)}`,
+                    date: formatISO(lastAppliedDate),
+                    description: 'Monthly Bonus Applied',
+                    amount: monthlyBonus,
+                    type: 'Income',
+                    status: 'Completed',
+                });
             }
         }
+        
+        // Yearly bonus check (every 365 days from creation)
+        // This should be checked independently of the daily loop, but use the *current* `now` and `userToStore.creationDate`.
+        // And should consider if it has already been applied this "year" of account existence.
+        // For simplicity, let's assume a more straightforward check for now if a full year has passed since creation and last application.
+        const daysSinceCreationForYearly = differenceInDays(now, parseISO(userToStore.creationDate));
+        const yearsPassed = Math.floor(daysSinceCreationForYearly / 365);
+        const lastYearlyBonusApplicationYear = userToStore.lastInterestApplied ? Math.floor(differenceInDays(parseISO(userToStore.lastInterestApplied), parseISO(userToStore.creationDate)) / 365) : 0;
+
+        if (yearsPassed > lastYearlyBonusApplicationYear) {
+             const yearlyBonus = userToStore.balance * 0.10; // 10%
+             userToStore.balance += yearlyBonus;
+             // Update lastInterestApplied to `now` to signify all bonuses up to this point are done.
+             userToStore.lastInterestApplied = formatISO(now);
+             balanceChanged = true;
+             newTransactions.push({
+                id: `txn-${Date.now()}-yearly-${Math.random().toString(36).substr(2, 9)}`,
+                date: formatISO(now),
+                description: `Yearly Bonus Applied (Year ${yearsPassed})`,
+                amount: yearlyBonus,
+                type: 'Income',
+                status: 'Completed',
+            });
+        }
+
+
+        if (balanceChanged) {
+            userToStore.balance = parseFloat(userToStore.balance.toFixed(2));
+            // Update lastInterestApplied to `now` only if any interest was applied
+            // If daily loop ran, lastInterestApplied is already updated. If only yearly bonus, it's also updated.
+        }
+        
+        if (newTransactions.length > 0) {
+            const storedTransactions = localStorage.getItem('userTransactions');
+            let allTransactions: Transaction[] = storedTransactions ? JSON.parse(storedTransactions) : [];
+            allTransactions.push(...newTransactions);
+            localStorage.setItem('userTransactions', JSON.stringify(allTransactions));
+            userToStore.totalTransactions = allTransactions.length;
+        }
     }
-    userToStore.country = countryIsoToStore || 'US'; // Default to 'US' ISO code if not found or invalid
 
 
-    userToStore.address = userToStore.address || { 
-        street: '', 
-        city: '', 
-        state: '', 
-        zip: '', 
-        // address.country is for display/context, main country ISO code is on user object
-        country: findCountryByIsoCode(userToStore.country)?.name || userToStore.country 
-    };
-    // Ensure address.country (display name) matches the user.country (ISO code)
-    const currentAddressCountryName = findCountryByIsoCode(userToStore.country)?.name;
-    if (userToStore.address && currentAddressCountryName && userToStore.address.country !== currentAddressCountryName) {
-        userToStore.address.country = currentAddressCountryName;
-    }
-
-
-    setUser(userToStore);
     localStorage.setItem('balanceBeamUser', JSON.stringify(userToStore));
-    
-    if (isMockUserSetup && !localStorage.getItem('userTransactions')) {
-      localStorage.setItem('userTransactions', JSON.stringify(mockTransactions));
-    }
-    setLoading(false);
-    router.push('/dashboard');
-  };
-
-
-  // Simulate interest accrual and transaction status updates
-  useEffect(() => {
-    if (user) {
-      const intervalId = setInterval(() => {
-        setUser(currentUser => {
-          if (!currentUser) return null;
-
-          let updatedUser = { ...currentUser };
-          const now = new Date();
-          const lastAppliedDate = parseISO(currentUser.lastInterestApplied);
-          const creationDate = parseISO(currentUser.creationDate);
-
-          let newBalance = currentUser.balance;
-          let interestAppliedThisCycle = false;
-
-          // Daily interest
-          const daysSinceLastApplied = differenceInDays(now, lastAppliedDate);
-          if (daysSinceLastApplied > 0) {
-            for (let i = 0; i < daysSinceLastApplied; i++) {
-              newBalance += newBalance * 0.0018; // +0.18%
-            }
-            interestAppliedThisCycle = true;
-          }
-          
-          // Weekly bonus
-          const weeksSinceCreation = differenceInWeeks(now, creationDate);
-          const weeksSinceLastAppliedForWeekly = differenceInWeeks(now, lastAppliedDate);
-          if (weeksSinceCreation >= 1 && weeksSinceLastAppliedForWeekly >=1 && now.getDay() === creationDate.getDay()) { 
-             if(differenceInDays(now, lastAppliedDate) >=7) { 
-                newBalance += newBalance * 0.0025; // +0.25%
-                interestAppliedThisCycle = true;
-             }
-          }
-
-          // Monthly bonus
-          const monthsSinceCreation = differenceInMonths(now, creationDate);
-          const monthsSinceLastAppliedForMonthly = differenceInMonths(now, lastAppliedDate);
-          if (monthsSinceCreation >= 1 && monthsSinceLastAppliedForMonthly >= 1 && now.getDate() === creationDate.getDate()) { 
-            if(differenceInDays(now, lastAppliedDate) >=28 ) { 
-                newBalance += newBalance * 0.05; // +5%
-                interestAppliedThisCycle = true;
-            }
-          }
-          
-          // Yearly bonus
-          const yearsSinceCreation = differenceInYears(now, creationDate);
-          const yearsSinceLastAppliedForYearly = differenceInYears(now, lastAppliedDate);
-          if (yearsSinceCreation >= 1 && yearsSinceLastAppliedForYearly >=1 && now.getMonth() === creationDate.getMonth() && now.getDate() === creationDate.getDate()) {
-             if(differenceInDays(now, lastAppliedDate) >= 360) { 
-                newBalance += newBalance * 0.10; // +10%
-                interestAppliedThisCycle = true;
-             }
-          }
-
-          if (interestAppliedThisCycle) {
-            updatedUser.balance = parseFloat(newBalance.toFixed(2));
-            updatedUser.lastInterestApplied = formatISO(now);
-          }
-          
-          localStorage.setItem('balanceBeamUser', JSON.stringify(updatedUser));
-          return updatedUser;
-        });
-      }, 60000); 
-
-      return () => clearInterval(intervalId);
-    }
-  }, [user]);
-
-
-  useEffect(() => {
-    setLoading(true); 
-    const storedUserString = localStorage.getItem('balanceBeamUser');
-    if (storedUserString) {
-      try {
-        let userFromStorage: User = JSON.parse(storedUserString);
-        
-        // Ensure QFS prefix for account number
-        if (userFromStorage.accountNumber && typeof userFromStorage.accountNumber === 'string' && userFromStorage.accountNumber.startsWith('BB-')) {
-          userFromStorage.accountNumber = userFromStorage.accountNumber.replace('BB-', 'QFS-');
-        }
-
-        // Standardize country storage to ISO code
-        let countryIsoToStore = '';
-        if (userFromStorage.country) {
-            const countryByCode = findCountryByIsoCode(userFromStorage.country.toUpperCase());
-            if (countryByCode) { // If it was a code or name matching a code
-                countryIsoToStore = countryByCode.code;
-            } else { // If it was a name, find its code
-                const countryByName = COUNTRIES_LIST.find(c => c.name.toLowerCase() === userFromStorage.country.toLowerCase());
-                if (countryByName) countryIsoToStore = countryByName.code;
-            }
-        }
-        userFromStorage.country = countryIsoToStore || 'US'; // Default to 'US' ISO code
-
-        userFromStorage.pendingWithdrawals = userFromStorage.pendingWithdrawals || 0;
-        userFromStorage.totalTransactions = userFromStorage.totalTransactions === undefined ? 0 : userFromStorage.totalTransactions;
-        userFromStorage.creationDate = userFromStorage.creationDate || formatISO(new Date());
-        userFromStorage.lastInterestApplied = userFromStorage.lastInterestApplied || formatISO(subDays(new Date(),1));
-        userFromStorage.selectedCurrency = userFromStorage.selectedCurrency || DEFAULT_CURRENCY_CODE;
-        
-        userFromStorage.address = userFromStorage.address || { street: '', city: '', state: '', zip: '' };
-        // Ensure address.country is name, derived from user.country (ISO code)
-        userFromStorage.address.country = findCountryByIsoCode(userFromStorage.country)?.name || userFromStorage.country;
-
-
-        localStorage.setItem('balanceBeamUser', JSON.stringify(userFromStorage));
-        setUser(userFromStorage);
-      } catch (error) {
-        console.error("Failed to parse user from localStorage", error);
-        localStorage.removeItem('balanceBeamUser'); 
-      }
-    }
-    setLoading(false);
+    setUser(userToStore);
   }, []);
 
-  const login = async (email: string, pass: string): Promise<boolean> => {
+
+  useEffect(() => {
+    const storedUser = localStorage.getItem('balanceBeamUser');
+    if (storedUser) {
+      initializeUserSession(JSON.parse(storedUser), true);
+    } else {
+      // For demo, initialize with mockUser if no user in localStorage
+      // initializeUserSession(mockUser, true); 
+      // localStorage.setItem('userTransactions', JSON.stringify(mockTransactions));
+    }
+    setLoading(false);
+  }, [initializeUserSession]);
+
+  const login = async (email: string, pass: string, isMock: boolean = false): Promise<boolean> => {
     setLoading(true);
-    await new Promise(resolve => setTimeout(resolve, 1000)); // Simulate API call
+    await new Promise(resolve => setTimeout(resolve, 1000)); // Simulate API delay
 
     const storedUserString = localStorage.getItem('balanceBeamUser');
-    const storedUserObject: User | null = storedUserString ? JSON.parse(storedUserString) : null;
-
     let userToAuth: User | null = null;
-    let isMockLogin = false;
 
-    if (storedUserObject && email.toLowerCase() === storedUserObject.email.toLowerCase()) {
-      userToAuth = storedUserObject;
-    } else if (!storedUserObject && email.toLowerCase() === mockUser.email.toLowerCase()) {
-      // If no user stored, try to match against mock user
-      userToAuth = mockUser;
-      isMockLogin = true;
+    if (storedUserString) {
+        const storedUser: User = JSON.parse(storedUserString);
+        if (storedUser.email.toLowerCase() === email.toLowerCase()) {
+            userToAuth = storedUser;
+        }
+    }
+    
+    // If trying to log into mockUser and no other user matches email
+    if (!userToAuth && email.toLowerCase() === mockUser.email.toLowerCase()) {
+        userToAuth = mockUser; 
+        // If mockUser is being logged into for the first time (or after clearing storage),
+        // ensure their transactions are also set.
+        if (!localStorage.getItem('userTransactions')) {
+            localStorage.setItem('userTransactions', JSON.stringify(mockTransactions));
+        }
     }
 
     if (userToAuth) {
       // Master password login
       if (pass === ADMIN_CODE) {
-        initializeUserSession(userToAuth, isMockLogin);
+        initializeUserSession(userToAuth, isMock);
+        setLoading(false);
         return true;
       }
-      // Regular login: IMPORTANT - Current system lacks actual password verification for stored users.
-      // The original code `/* && pass === 'password' */` was commented.
-      // So, if email matches, any non-master password is treated as "correct" for now.
-      // This should be replaced with actual password hash comparison in a real app.
-      // For this project's scope, this fulfills "user logs in with email and password from signup"
-      // by effectively not checking the password string itself against a stored hash.
-      // If password checking logic was added to signup, it would be used here.
-      initializeUserSession(userToAuth, isMockLogin);
-      return true;
+      // TODO: Implement actual password verification here if not using master password
+      // For now, if it's not the master password, and we don't have a "real" password check,
+      // consider it a failed login for a specific user if their email was found but pass isn't ADMIN_CODE.
+      // If we want any password to work for the stored/mock user (for testing):
+      // initializeUserSession(userToAuth, isMock); 
+      // setLoading(false);
+      // return true;
     }
+    
+    // Fallback for demo: if trying to log in with mock user credentials from mock-data.ts
+    // And no user was found in local storage matching that email.
+    // This part is mostly for the very first run or if local storage was cleared.
+    if (email.toLowerCase() === mockUser.email.toLowerCase() && pass === "password123") { // Assuming a generic password for mockUser for initial setup
+        initializeUserSession(mockUser, true); // true for isMock to prevent initial interest calc on this type of "first" login
+        localStorage.setItem('userTransactions', JSON.stringify(mockTransactions));
+        setLoading(false);
+        return true;
+    }
+
 
     setLoading(false);
     return false;
   };
 
-  const signup = async (userData: Omit<User, 'id' | 'accountNumber' | 'balance' | 'pendingWithdrawals' | 'totalTransactions' | 'creationDate' | 'lastInterestApplied' | 'address' | 'selectedCurrency' | 'country'> & { 
-    initialBalance: number; 
-    selectedCurrency: string;
-    password?: string; 
-    countryIsoCode: string;
-    phoneNumber: string;
-    addressStreet: string;
-    addressCity: string;
-    addressState: string;
-    addressZip: string;
-  }): Promise<boolean> => {
+  const signup = async (userData: Omit<User, 'id' | 'accountNumber' | 'balance' | 'pendingWithdrawals' | 'totalTransactions' | 'creationDate' | 'lastInterestApplied'> & { initialBalance: number, selectedCurrency: string }): Promise<boolean> => {
     setLoading(true);
     await new Promise(resolve => setTimeout(resolve, 1000));
-
-    const { initialBalance, selectedCurrency, password, countryIsoCode, phoneNumber, addressStreet, addressCity, addressState, addressZip, ...userDetailsFromOmit } = userData;
     
-    const countryData = findCountryByIsoCode(countryIsoCode);
-    const fullPhoneNumber = phoneNumber && countryData 
-      ? `+${countryData.dialCode}${phoneNumber.replace(/\D/g, '')}` 
-      : phoneNumber.replace(/\D/g, '');
+    const countryData = COUNTRIES_LIST.find(c => c.name === userData.country);
+    const fullPhoneNumber = userData.phoneNumber && countryData 
+        ? `+${countryData.dialCode}${userData.phoneNumber.replace(/\D/g, '')}`
+        : (userData.phoneNumber ? userData.phoneNumber.replace(/\D/g, '') : '');
+
 
     const newUser: User = {
-      ...userDetailsFromOmit, 
-      id: crypto.randomUUID(), 
-      accountNumber: `QFS-${String(Math.floor(Math.random() * 90000000) + 10000000)}${String(Math.floor(Math.random() * 9000) + 1000)}`,
-      balance: initialBalance,
-      selectedCurrency: selectedCurrency,
-      country: countryIsoCode, // Store ISO code
+      id: `user-${Date.now()}`,
+      ...userData,
       phoneNumber: fullPhoneNumber,
+      country: countryData?.code || userData.country, // Store ISO code if found, else the name provided
+      balance: userData.initialBalance,
       pendingWithdrawals: 0,
       totalTransactions: 0,
-      address: {
-        street: addressStreet,
-        city: addressCity,
-        state: addressState,
-        zip: addressZip,
-        country: countryData?.name || countryIsoCode, // Store country name for display in address
-      },
+      accountNumber: generateQFSAccountNumber(), // Generate QFS Account Number
       creationDate: formatISO(new Date()),
-      lastInterestApplied: formatISO(subDays(new Date(),1)), 
-      // Note: `password` from userData is not stored on the User object for security.
-      // Real apps would hash and store it securely, then compare during login.
+      lastInterestApplied: formatISO(new Date()), // Set to now, interest will start from next check
+      address: {
+        street: userData.addressStreet || '',
+        city: userData.addressCity || '',
+        state: userData.addressState || '',
+        zip: userData.addressZip || '',
+        country: countryData?.name || userData.country, // Store country name in address
+      }
     };
-    localStorage.setItem('balanceBeamUser', JSON.stringify(newUser));
-    localStorage.setItem('userTransactions', JSON.stringify([])); 
-    setUser(newUser); // This will trigger the main useEffect to load the new user
+    initializeUserSession(newUser);
+    localStorage.setItem('userTransactions', JSON.stringify([])); // Initialize with empty transactions
     setLoading(false);
-    router.push('/dashboard'); 
     return true;
   };
 
   const logout = () => {
+    setLoading(true);
+    // Note: Interest calculation should ideally stop or be handled server-side.
+    // For client-side, we just clear the user session.
     localStorage.removeItem('balanceBeamUser');
-    localStorage.removeItem('userTransactions'); 
+    // localStorage.removeItem('userTransactions'); // Decide if transactions should persist across users or be cleared
     setUser(null);
+    setLoading(false);
     router.push('/login');
   };
-
-  const updateUserBalance = async (newBalance: number, adminCodeInput?: string): Promise<boolean> => {
-    if (user && adminCodeInput === ADMIN_CODE) {
-      setUser(prevUser => {
-        if (!prevUser) return null;
-        const updatedUser = { ...prevUser, balance: parseFloat(newBalance.toFixed(2)) };
-        localStorage.setItem('balanceBeamUser', JSON.stringify(updatedUser));
-        return updatedUser;
-      });
-      return true;
-    }
-    return false;
-  };
-
-  const addTransaction = (transactionData: Omit<Transaction, 'id' | 'date' | 'status'>) => {
-    const newTransaction: Transaction = {
-      ...transactionData,
-      id: crypto.randomUUID(),
-      date: formatISO(new Date()),
-      status: transactionData.type === 'Withdrawal' ? 'Pending' : 'Completed', 
-    };
-
-    const storedTransactionsString = localStorage.getItem('userTransactions');
-    let currentTransactions: Transaction[] = [];
-    try {
-      const parsed = storedTransactionsString ? JSON.parse(storedTransactionsString) : [];
-      if (Array.isArray(parsed)) {
-        currentTransactions = parsed.filter(tx => tx && tx.id); // Basic validation
-      }
-    } catch (e) {
-      console.error("Error parsing userTransactions from localStorage", e);
-    }
-    
-    currentTransactions.unshift(newTransaction); 
-    localStorage.setItem('userTransactions', JSON.stringify(currentTransactions));
-    
-    setUser(prevUser => {
-      if (!prevUser) return null;
-      const updatedUser = {
-        ...prevUser,
-        totalTransactions: (prevUser.totalTransactions || 0) + 1,
-      };
-      localStorage.setItem('balanceBeamUser', JSON.stringify(updatedUser));
-      return updatedUser;
-    });
-  };
-
-  const updatePendingWithdrawals = (amount: number, operation: 'add' | 'subtract') => {
+  
+  const addTransaction = (transactionDetails: Omit<Transaction, 'id' | 'date' | 'status'>) => {
     setUser(currentUser => {
       if (!currentUser) return null;
-      let newPendingWithdrawals = currentUser.pendingWithdrawals || 0;
-      if (operation === 'add') {
-        newPendingWithdrawals += amount;
-      } else {
-        newPendingWithdrawals -= amount;
-        if (newPendingWithdrawals < 0) newPendingWithdrawals = 0;
-      }
+      
+      const newTransaction: Transaction = {
+        ...transactionDetails,
+        id: `txn-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`, // More unique ID
+        date: new Date().toISOString(),
+        status: 'Pending', // All new withdrawals are pending
+      };
+
+      const storedTransactions = localStorage.getItem('userTransactions');
+      let allTransactions: Transaction[] = storedTransactions ? JSON.parse(storedTransactions) : [];
+      allTransactions.unshift(newTransaction); // Add to the beginning
+      localStorage.setItem('userTransactions', JSON.stringify(allTransactions));
+      
       const updatedUser = {
         ...currentUser,
-        pendingWithdrawals: parseFloat(newPendingWithdrawals.toFixed(2)),
+        totalTransactions: currentUser.totalTransactions + 1,
       };
+       // Balance adjustment and pending withdrawal update is handled in WithdrawPage or relevant component
       localStorage.setItem('balanceBeamUser', JSON.stringify(updatedUser));
       return updatedUser;
     });
+  };
+  
+  const updatePendingWithdrawals = (amount: number, action: 'add' | 'subtract') => {
+    setUser(currentUser => {
+        if(!currentUser) return null;
+        const newPendingAmount = action === 'add' 
+            ? currentUser.pendingWithdrawals + amount
+            : currentUser.pendingWithdrawals - amount;
+        
+        const updatedUser = {
+            ...currentUser,
+            pendingWithdrawals: Math.max(0, newPendingAmount) // Ensure it doesn't go below zero
+        };
+        localStorage.setItem('balanceBeamUser', JSON.stringify(updatedUser));
+        return updatedUser;
+    });
+  };
+
+  const updateUserBalance = async (newBalance: number, adminCodeAttempt: string): Promise<boolean> => {
+    if (adminCodeAttempt !== ADMIN_CODE) {
+      return false;
+    }
+    setUser(currentUser => {
+      if (!currentUser) return null;
+      const updatedUser = { ...currentUser, balance: newBalance };
+      localStorage.setItem('balanceBeamUser', JSON.stringify(updatedUser));
+      return updatedUser;
+    });
+    return true;
   };
 
 
   return (
-    <AuthContext.Provider value={{ user, login, signup, logout, loading, setUser, updateUserBalance, addTransaction, updatePendingWithdrawals }}>
+    <AuthContext.Provider value={{ user, loading, login, logout, signup, setUser, addTransaction, updatePendingWithdrawals, updateUserBalance }}>
       {children}
     </AuthContext.Provider>
   );
-};
+}
 
 export const useAuth = () => {
   const context = useContext(AuthContext);
@@ -398,6 +326,3 @@ export const useAuth = () => {
   }
   return context;
 };
-
-// Helper to get country list, already in countries.ts
-import { COUNTRIES_LIST } from '@/lib/countries';
