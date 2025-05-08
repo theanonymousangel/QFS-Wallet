@@ -217,7 +217,7 @@ export default function TransactionsPage() {
                   <TableHead onClick={() => handleSort('type')} className="cursor-pointer hover:text-primary">
                     Type <ArrowUpDown className="ml-1 inline-block h-4 w-4" />
                   </TableHead>
-                  <TableHead onClick={() => handleSort('payoutMethod')} className="cursor-pointer hover:text-primary">
+                  <TableHead onClick={() => handleSort('payoutMethod')} className="cursor-pointer hover:text-primary hidden sm:table-cell">
                     Method <ArrowUpDown className="ml-1 inline-block h-4 w-4" />
                   </TableHead>
                   <TableHead onClick={() => handleSort('amount')} className="text-right cursor-pointer hover:text-primary">
@@ -233,10 +233,17 @@ export default function TransactionsPage() {
                   filteredAndSortedTransactions.map((tx) => (
                     <TableRow key={tx.id} className="hover:bg-accent/20">
                       <TableCell>{getTransactionIcon(tx.type)}</TableCell>
-                      <TableCell>{format(parseISO(tx.date), 'PP pp')}</TableCell>
+                      <TableCell>
+                        <span className="hidden sm:inline">
+                          {format(parseISO(tx.date), 'PP, p')}
+                        </span>
+                        <span className="sm:hidden">
+                          {format(parseISO(tx.date), 'MMM d, yy')}
+                        </span>
+                      </TableCell>
                       <TableCell className="font-medium">{tx.description}</TableCell>
                       <TableCell>{tx.type}</TableCell>
-                      <TableCell>
+                      <TableCell className="hidden sm:table-cell">
                         {tx.payoutMethod ? (
                            <Tooltip delayDuration={100}>
                             <TooltipTrigger asChild>
