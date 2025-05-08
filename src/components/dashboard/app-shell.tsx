@@ -110,12 +110,13 @@ export function AppShell({ children }: { children: ReactNode }) {
         </ul>
       </nav>
       
-      <div className="mt-auto border-t border-sidebar-border p-4">
+      {/* Removed logout button from here as it's in the dropdown menu */}
+      {/* <div className="mt-auto border-t border-sidebar-border p-4">
         <Button variant="ghost" className="w-full justify-start gap-3 text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-primary" onClick={logout}>
             <LogOut className="h-5 w-5" />
             Logout
         </Button>
-      </div>
+      </div> */}
     </div>
   );
   
