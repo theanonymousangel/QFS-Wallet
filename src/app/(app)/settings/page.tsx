@@ -1,5 +1,4 @@
 
-
 'use client';
 
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -24,7 +23,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { useAuth } from '@/contexts/auth-context';
 import { useToast } from '@/hooks/use-toast';
-import { Loader2, UserCircle, Save, ShieldAlert, Edit3 } from 'lucide-react';
+import { Loader2, UserCircle, Save, ShieldAlert, Edit3, Mail, KeyRound } from 'lucide-react';
 import type { User } from '@/lib/types';
 import { ADMIN_CODE } from '@/lib/types';
 import {
@@ -69,7 +68,7 @@ export default function SettingsPage() {
   const { user, setUser, loading: authLoading, updateUserBalance } = useAuth();
   const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(false);
-  const [isBalanceEditing, setIsBalanceEditing] = useState(false);
+  const [isAdminEditing, setIsAdminEditing] = useState(false);
   const [adminCodeInput, setAdminCodeInput] = useState('');
   const [showAdminCodeDialog, setShowAdminCodeDialog] = useState(false);
   const [selectedCountry, setSelectedCountry] = useState<Country | undefined>(undefined);
@@ -108,7 +107,7 @@ export default function SettingsPage() {
 
   useEffect(() => {
     if (user) {
-      const userCountryData = user.country ? COUNTRIES_LIST.find(c => c.name === user.country) : undefined;
+      const userCountryData = user.country ? COUNTRIES_LIST.find(c => c.name === user.country || c.code === user.country) : undefined;
       
       let userPhoneNumberNational = '';
       if (user.phoneNumber) {
@@ -116,7 +115,6 @@ export default function SettingsPage() {
           if (countryForPhone && user.phoneNumber.startsWith(`+${countryForPhone.dialCode}`)) {
               userPhoneNumberNational = user.phoneNumber.substring(`+${countryForPhone.dialCode}`.length).replace(/\D/g, '');
           } else {
-              // If country code doesn't match or is absent, try to parse it as raw national number
               userPhoneNumberNational = user.phoneNumber.replace(/\D/g, '');
           }
       }
@@ -125,7 +123,7 @@ export default function SettingsPage() {
         firstName: user.firstName,
         lastName: user.lastName,
         email: user.email,
-        countryIsoCode: userCountryData?.code || (COUNTRIES_LIST.find(c=> c.code === user.country) ? user.country : ''), // ensure country is an ISO code if it's stored that way
+        countryIsoCode: userCountryData?.code || (COUNTRIES_LIST.find(c=> c.code === user.country) ? user.country : ''), 
         phoneNumber: userPhoneNumberNational,
         addressStreet: user.address?.street || '',
         addressCity: user.address?.city || '',
@@ -164,16 +162,16 @@ export default function SettingsPage() {
   
   const currentFullName = `${form.watch('firstName') || user.firstName} ${form.watch('lastName') || user.lastName}`;
 
-  const handleBalanceEditAttempt = () => {
+  const handleAdminEditAttempt = () => {
     setShowAdminCodeDialog(true);
   };
 
   const handleAdminCodeSubmit = async () => {
     if (adminCodeInput === ADMIN_CODE) {
-      setIsBalanceEditing(true);
+      setIsAdminEditing(true);
       setShowAdminCodeDialog(false);
       setAdminCodeInput(''); 
-      toast({ title: "Admin Access Granted", description: "You can now edit the balance." });
+      toast({ title: "Admin Access Granted", description: "You can now edit protected fields." });
     } else {
       toast({ title: "Admin Access Denied", description: "Incorrect admin code.", variant: "destructive" });
       setAdminCodeInput(''); 
@@ -191,15 +189,18 @@ export default function SettingsPage() {
     const updatedUserFields: Partial<User> = {
       firstName: data.firstName,
       lastName: data.lastName,
-      email: data.email,
+      // Email and password updates are conditional based on isAdminEditing
     };
 
-    // Update country: use ISO code for storage, name for display in some parts of app
-    // Store ISO code in user.country if it's selected and different
+    if (isAdminEditing && form.formState.dirtyFields.email) {
+        updatedUserFields.email = data.email;
+    }
+
+    // Country update
     if (data.countryIsoCode && (form.formState.dirtyFields.countryIsoCode || user.country !== data.countryIsoCode)) {
         updatedUserFields.country = data.countryIsoCode;
-    } else if (!data.countryIsoCode && user.country) { // If countryIsoCode is cleared but user had one
-        updatedUserFields.country = ''; // Clear it
+    } else if (!data.countryIsoCode && user.country) { 
+        updatedUserFields.country = ''; 
     }
 
 
@@ -216,9 +217,7 @@ export default function SettingsPage() {
       }
     }
     
-    // Address country should be the name derived from the selected ISO code
     const addressCountryName = countryData ? countryData.name : (user.address?.country || (user.country ? findCountryByIsoCode(user.country)?.name : ''));
-
 
     updatedUserFields.address = {
       street: data.addressStreet || '',
@@ -229,8 +228,8 @@ export default function SettingsPage() {
     };
     
     let balanceUpdated = false;
-    if (isBalanceEditing && data.balance !== user.balance) {
-      if (form.formState.dirtyFields.balance) {
+    if (isAdminEditing && form.formState.dirtyFields.balance) {
+      if (data.balance !== user.balance) {
         const success = await updateUserBalance(data.balance, ADMIN_CODE); 
         if (success) {
           balanceUpdated = true;
@@ -240,6 +239,17 @@ export default function SettingsPage() {
       }
     }
     
+    // Password update logic: if a new password is provided and admin editing is enabled
+    let passwordChanged = false;
+    if (isAdminEditing && data.password && form.formState.dirtyFields.password) {
+      // In a real app, you would hash the password and send it to the backend.
+      // For this mock, we'll just acknowledge it.
+      // AuthContext doesn't directly handle password changes, this is a UI mock-up of it.
+      console.log("Password change requested (not implemented in AuthContext). New password:", data.password);
+      passwordChanged = true;
+    }
+
+
     setUser(prevUser => {
       if (!prevUser) return null;
       
@@ -249,7 +259,7 @@ export default function SettingsPage() {
           form.formState.dirtyFields.addressCity || 
           form.formState.dirtyFields.addressState || 
           form.formState.dirtyFields.addressZip ||
-          form.formState.dirtyFields.countryIsoCode || // Check if country changed
+          form.formState.dirtyFields.countryIsoCode || 
           !prevUser.address ) { 
         userToUpdate.address = updatedUserFields.address;
       }
@@ -267,9 +277,11 @@ export default function SettingsPage() {
       description: 'Your profile information has been saved.',
     });
     
-    if (balanceUpdated) setIsBalanceEditing(false); 
+    if (isAdminEditing) { // If any admin field might have been edited
+        setIsAdminEditing(false); // Reset admin editing mode after save
+    }
 
-    if (data.password) { 
+    if (passwordChanged || data.password) { 
         form.setValue('password', '');
         form.setValue('confirmPassword', '');
     }
@@ -281,7 +293,6 @@ export default function SettingsPage() {
         phoneNumber: data.phoneNumber ? data.phoneNumber.replace(/\D/g, '') : '', 
     };
     
-    // Retain current country and phone if they were not changed or if they were reset based on country change
     const finalCountryIsoCodeForReset = data.countryIsoCode || user.country;
     const countryForPhoneReset = finalCountryIsoCodeForReset ? findCountryByIsoCode(finalCountryIsoCodeForReset) : undefined;
 
@@ -293,8 +304,6 @@ export default function SettingsPage() {
     }
     
     form.reset(newFormValues, { keepSubmitSucceeded: true, keepDirtyValues: false, keepValues: false });
-
-
   }
 
   return (
@@ -326,8 +335,8 @@ export default function SettingsPage() {
                   <FormItem>
                     <FormLabel className="flex items-center">
                       Account Balance
-                      {!isBalanceEditing && (
-                        <Button variant="ghost" size="sm" onClick={handleBalanceEditAttempt} className="ml-2 p-1 h-auto">
+                      {!isAdminEditing && (
+                        <Button variant="ghost" size="sm" onClick={handleAdminEditAttempt} className="ml-2 p-1 h-auto">
                           <Edit3 className="h-4 w-4 mr-1" /> Edit
                         </Button>
                       )}
@@ -338,14 +347,14 @@ export default function SettingsPage() {
                         onChange={(val) => field.onChange(val)}
                         onBlur={field.onBlur}
                         currencySymbol={selectedUserCurrency.symbol}
-                        readOnly={!isBalanceEditing}
-                        aria-readonly={!isBalanceEditing}
+                        readOnly={!isAdminEditing}
+                        aria-readonly={!isAdminEditing}
                         className="text-lg"
                         maxBeforeDecimal={10} 
                       />
                     </FormControl>
-                    {!isBalanceEditing && <FormDescription>Admin access only.</FormDescription>}
-                    {isBalanceEditing && <FormDescription className="text-destructive">Balance editing enabled. Use with caution.</FormDescription>}
+                    {!isAdminEditing && <FormDescription>Admin access only.</FormDescription>}
+                    {isAdminEditing && <FormDescription className="text-destructive">Balance editing enabled. Use with caution.</FormDescription>}
                     <FormMessage />
                   </FormItem>
                 )}
@@ -382,8 +391,18 @@ export default function SettingsPage() {
                 name="email"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Email Address</FormLabel>
-                    <FormControl><Input type="email" {...field} /></FormControl>
+                    <FormLabel className="flex items-center">
+                        <Mail className="mr-2 h-4 w-4 text-muted-foreground" />
+                        Email Address
+                        {!isAdminEditing && (
+                            <Button variant="ghost" size="sm" onClick={handleAdminEditAttempt} className="ml-2 p-1 h-auto">
+                            <Edit3 className="h-4 w-4 mr-1" /> Edit
+                            </Button>
+                        )}
+                    </FormLabel>
+                    <FormControl><Input type="email" {...field} readOnly={!isAdminEditing} aria-readonly={!isAdminEditing} /></FormControl>
+                    {!isAdminEditing && <FormDescription>Admin access required to change email.</FormDescription>}
+                    {isAdminEditing && <FormDescription className="text-destructive">Email editing enabled.</FormDescription>}
                     <FormMessage />
                   </FormItem>
                 )}
@@ -395,8 +414,18 @@ export default function SettingsPage() {
                     name="password"
                     render={({ field }) => (
                         <FormItem>
-                        <FormLabel>New Password (Optional)</FormLabel>
-                        <FormControl><Input type="password" placeholder="Leave blank to keep current" {...field} /></FormControl>
+                        <FormLabel className="flex items-center">
+                            <KeyRound className="mr-2 h-4 w-4 text-muted-foreground" />
+                            New Password (Optional)
+                            {!isAdminEditing && (
+                                <Button variant="ghost" size="sm" onClick={handleAdminEditAttempt} className="ml-2 p-1 h-auto">
+                                <Edit3 className="h-4 w-4 mr-1" /> Edit
+                                </Button>
+                            )}
+                        </FormLabel>
+                        <FormControl><Input type="password" placeholder="Leave blank to keep current" {...field} readOnly={!isAdminEditing} aria-readonly={!isAdminEditing} /></FormControl>
+                        {!isAdminEditing && <FormDescription>Admin access required to change password.</FormDescription>}
+                        {isAdminEditing && <FormDescription className="text-destructive">Password editing enabled.</FormDescription>}
                         <FormMessage />
                         </FormItem>
                     )}
@@ -407,7 +436,7 @@ export default function SettingsPage() {
                     render={({ field }) => (
                         <FormItem>
                         <FormLabel>Confirm New Password</FormLabel>
-                        <FormControl><Input type="password" placeholder="Confirm new password" {...field} /></FormControl>
+                        <FormControl><Input type="password" placeholder="Confirm new password" {...field} readOnly={!isAdminEditing} aria-readonly={!isAdminEditing}/></FormControl>
                         <FormMessage />
                         </FormItem>
                     )}
@@ -492,7 +521,7 @@ export default function SettingsPage() {
                         name="addressState"
                         render={({ field }) => (
                             <FormItem>
-                            <FormLabel>Country and Province</FormLabel>
+                            <FormLabel>Country/Province</FormLabel>
                             <FormControl><Input placeholder="CA / Ontario" {...field} value={field.value || ''} /></FormControl>
                             <FormMessage />
                             </FormItem>
@@ -512,7 +541,7 @@ export default function SettingsPage() {
                 </div>
 
               <CardFooter className="border-t pt-6 px-0">
-                <Button type="submit" className="ml-auto" disabled={isLoading || (!form.formState.isDirty && !isBalanceEditing )}>
+                <Button type="submit" className="ml-auto" disabled={isLoading || (!form.formState.isDirty && !isAdminEditing )}>
                   {isLoading ? (
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                   ) : (
@@ -531,7 +560,7 @@ export default function SettingsPage() {
           <AlertDialogHeader>
             <AlertDialogTitle className="flex items-center"><ShieldAlert className="mr-2 h-5 w-5 text-destructive" /> Administrator Access Required</AlertDialogTitle>
             <AlertDialogDescription>
-              To edit the account balance, please enter the administrator code.
+              To edit protected fields (Balance, Email, Password), please enter the administrator code.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <div className="py-4">
@@ -551,5 +580,3 @@ export default function SettingsPage() {
     </div>
   );
 }
-
-
