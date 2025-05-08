@@ -26,9 +26,9 @@ export function AccountInfo() {
 
   const connectionOptions = [
     { label: 'Withdraw to Bank', icon: BankIcon, href: '/withdraw' },
-    { label: 'Apple Wallet', icon: AppleWalletIcon, action: () => toast({ title: "Coming Soon!", description: "Apple Wallet integration is under development." }) },
-    { label: 'Google Wallet', icon: GoogleWalletIcon, action: () => toast({ title: "Coming Soon!", description: "Google Wallet integration is under development." }) },
     { label: 'QFS System Card', icon: CreditCard, href: '/withdraw' },
+    { label: 'Google Wallet', icon: GoogleWalletIcon, action: () => toast({ title: "Coming Soon!", description: "Google Wallet integration is under development." }) },
+    { label: 'Apple Wallet', icon: AppleWalletIcon, action: () => toast({ title: "Coming Soon!", description: "Apple Wallet integration is under development." }) },
   ];
 
   return (
