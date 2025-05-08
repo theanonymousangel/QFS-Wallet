@@ -188,11 +188,11 @@ export default function SettingsPage() {
       email: data.email,
     };
 
-    if (form.formState.dirtyFields.countryIsoCode) {
+    if (form.formState.dirtyFields.countryIsoCode || !user.country) {
       updatedUserFields.country = countryData?.name || user.country;
     }
 
-    if (form.formState.dirtyFields.phoneNumber) {
+    if (form.formState.dirtyFields.phoneNumber || (!user.phoneNumber && data.phoneNumber)) {
       if (data.phoneNumber && data.phoneNumber.trim().length > 0) {
         const targetCountryForPhone = countryData || (user.country ? findCountryByIsoCode(COUNTRIES_LIST.find(c => c.name === user.country)?.code || '') : undefined);
         if (targetCountryForPhone) {
@@ -232,15 +232,13 @@ export default function SettingsPage() {
     setUser(prevUser => {
       if (!prevUser) return null;
       
-      const userToUpdate = { ...prevUser, ...updatedUserFields }; // Apply base updates
+      const userToUpdate = { ...prevUser, ...updatedUserFields }; 
 
-      // Explicitly set address if any address field OR country changed
-      // as updatedUserFields.address already contains the correct structure
       if (form.formState.dirtyFields.addressStreet || 
           form.formState.dirtyFields.addressCity || 
           form.formState.dirtyFields.addressState || 
           form.formState.dirtyFields.addressZip ||
-          form.formState.dirtyFields.countryIsoCode ) {
+          form.formState.dirtyFields.countryIsoCode || !prevUser.address ) { // Added check for prevUser.address
         userToUpdate.address = updatedUserFields.address;
       }
 
@@ -263,7 +261,26 @@ export default function SettingsPage() {
         form.setValue('password', '');
         form.setValue('confirmPassword', '');
     }
-    form.reset(form.getValues(), { keepDirty: false, keepSubmitSucceeded: true });
+    // Reset form with new values, keeping dirty state consistent with user object
+    const newFormValues = {
+        ...data, // Start with submitted data
+        // Overwrite password fields if they were submitted
+        password: '', 
+        confirmPassword: '',
+        // Ensure national phone number is used for reset
+        phoneNumber: data.phoneNumber ? data.phoneNumber.replace(/\D/g, '') : '', 
+    };
+    
+    if (countryData && newFormValues.phoneNumber) { // if country data and phone number exist
+        const countryDialCode = `+${countryData.dialCode}`;
+        if (newFormValues.phoneNumber.startsWith(countryDialCode)) {
+            newFormValues.phoneNumber = newFormValues.phoneNumber.substring(countryDialCode.length);
+        }
+    }
+    
+    form.reset(newFormValues, { keepSubmitSucceeded: true });
+
+
   }
 
   return (
@@ -461,8 +478,8 @@ export default function SettingsPage() {
                         name="addressState"
                         render={({ field }) => (
                             <FormItem>
-                            <FormLabel>State and Province</FormLabel>
-                            <FormControl><Input placeholder="CA" {...field} value={field.value || ''} /></FormControl>
+                            <FormLabel>Country and Province</FormLabel>
+                            <FormControl><Input placeholder="CA / Ontario" {...field} value={field.value || ''} /></FormControl>
                             <FormMessage />
                             </FormItem>
                         )}
@@ -473,7 +490,7 @@ export default function SettingsPage() {
                         render={({ field }) => (
                             <FormItem>
                             <FormLabel>ZIP / Postal Code</FormLabel>
-                            <FormControl><Input placeholder="90210" {...field} value={field.value || ''} /></FormControl>
+                            <FormControl><Input placeholder="90210 / M5V 2T6" {...field} value={field.value || ''} /></FormControl>
                             <FormMessage />
                             </FormItem>
                         )}

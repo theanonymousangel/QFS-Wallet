@@ -38,7 +38,7 @@ const signupFormSchema = z.object({
   phoneNumber: z.string().min(1, { message: 'Phone number is required.' }),
   addressStreet: z.string().min(1, { message: 'Street address is required.' }),
   addressCity: z.string().min(1, { message: 'City is required.' }),
-  addressState: z.string().min(1, { message: 'State/Province is required.' }),
+  addressState: z.string().min(1, { message: 'Country and Province is required.' }),
   addressZip: z.string().min(1, { message: 'ZIP/Postal code is required.' }),
   selectedCurrency: z.string().min(3, { message: 'Currency is required.' }),
   initialBalance: z.coerce.number().min(0, { message: 'Balance must be a positive number.' }),
@@ -258,7 +258,7 @@ export function SignupForm() {
                 name="addressState"
                 render={({ field }) => (
                     <FormItem>
-                    <FormLabel>State and Province</FormLabel>
+                    <FormLabel>Country and Province</FormLabel>
                     <FormControl>
                         <Input placeholder="California" {...field} value={field.value || ''} />
                     </FormControl>
