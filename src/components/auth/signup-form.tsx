@@ -34,7 +34,7 @@ const signupFormSchema = z.object({
   lastName: z.string().min(1, { message: 'Last name is required.' }),
   email: z.string().email({ message: 'Please enter a valid email.' }),
   password: z.string().min(6, { message: 'Password must be at least 6 characters.' }),
-  countryIsoCode: z.string().min(1, { message: 'Country is required.'}), // Storing ISO code
+  countryIsoCode: z.string().min(1, { message: 'Country is required.'}), 
   phoneNumber: z.string().min(1, { message: 'Phone number is required.' }),
   addressStreet: z.string().min(1, { message: 'Street address is required.' }),
   addressCity: z.string().min(1, { message: 'City is required.' }),
@@ -94,12 +94,12 @@ export function SignupForm() {
     const countryData = findCountryByIsoCode(data.countryIsoCode);
     const fullPhoneNumber = data.phoneNumber && countryData 
       ? `+${countryData.dialCode}${data.phoneNumber.replace(/\D/g, '')}` 
-      : data.phoneNumber; 
+      : data.phoneNumber.replace(/\D/g, ''); // Ensure only digits if no countryData
 
     const countryName = countryData ? countryData.name : data.countryIsoCode; 
 
     const success = await signup({
-      ...data, // includes firstName, lastName, email, selectedCurrency, initialBalance etc.
+      ...data, 
       country: countryName, 
       phoneNumber: fullPhoneNumber, 
     }); 
@@ -216,10 +216,10 @@ export function SignupForm() {
                   <FormLabel>Phone Number</FormLabel>
                   <FormControl>
                      <PhoneNumberInput 
-                        {...field}
                         countryIsoCode={selectedCountry?.code}
                         value={field.value || ''}
                         onChange={field.onChange}
+                        onBlur={field.onBlur} // Ensure RHF knows about blur
                      />
                   </FormControl>
                   <FormMessage />
@@ -258,7 +258,7 @@ export function SignupForm() {
                 name="addressState"
                 render={({ field }) => (
                     <FormItem>
-                    <FormLabel>State / Province</FormLabel>
+                    <FormLabel>State and Province</FormLabel>
                     <FormControl>
                         <Input placeholder="California" {...field} value={field.value || ''} />
                     </FormControl>

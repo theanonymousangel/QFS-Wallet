@@ -111,12 +111,10 @@ export default function SettingsPage() {
       
       let userPhoneNumberNational = '';
       if (user.phoneNumber) {
-          // Check if country data exists for the user's stored country name
-          const countryForPhone = user.country ? findCountryByIsoCode(COUNTRIES_LIST.find(c => c.name === user.country)?.code || '') : undefined;
+          const countryForPhone = userCountryData ? findCountryByIsoCode(userCountryData.code) : undefined;
           if (countryForPhone && user.phoneNumber.startsWith(`+${countryForPhone.dialCode}`)) {
               userPhoneNumberNational = user.phoneNumber.substring(`+${countryForPhone.dialCode}`.length).replace(/\D/g, '');
           } else {
-              // Fallback if country code cannot be stripped (e.g. number stored without it or country mismatch)
               userPhoneNumberNational = user.phoneNumber.replace(/\D/g, '');
           }
       }
@@ -188,32 +186,25 @@ export default function SettingsPage() {
       firstName: data.firstName,
       lastName: data.lastName,
       email: data.email,
-      // country, phoneNumber, and address.country are handled based on dirty state
     };
 
-    // Handle country update only if changed
     if (form.formState.dirtyFields.countryIsoCode) {
-      updatedUserFields.country = countryData?.name || user.country; // Fallback to current if somehow invalid
+      updatedUserFields.country = countryData?.name || user.country;
     }
 
-    // Handle phone number update only if changed
     if (form.formState.dirtyFields.phoneNumber) {
-      if (data.phoneNumber && data.phoneNumber.trim().length > 0 && countryData) {
-        updatedUserFields.phoneNumber = `+${countryData.dialCode}${data.phoneNumber.replace(/\D/g, '')}`;
-      } else if (data.phoneNumber && data.phoneNumber.trim().length > 0 && !countryData && user.country) {
-        // Case: phone number changed, but countryIsoCode was not (or was cleared). Use user's existing country for dial code.
-        const existingUserCountryData = findCountryByIsoCode(COUNTRIES_LIST.find(c => c.name === user.country)?.code || '');
-        if (existingUserCountryData) {
-           updatedUserFields.phoneNumber = `+${existingUserCountryData.dialCode}${data.phoneNumber.replace(/\D/g, '')}`;
+      if (data.phoneNumber && data.phoneNumber.trim().length > 0) {
+        const targetCountryForPhone = countryData || (user.country ? findCountryByIsoCode(COUNTRIES_LIST.find(c => c.name === user.country)?.code || '') : undefined);
+        if (targetCountryForPhone) {
+          updatedUserFields.phoneNumber = `+${targetCountryForPhone.dialCode}${data.phoneNumber.replace(/\D/g, '')}`;
         } else {
-           updatedUserFields.phoneNumber = data.phoneNumber.replace(/\D/g, ''); // No country data, store raw digits
+          updatedUserFields.phoneNumber = data.phoneNumber.replace(/\D/g, ''); 
         }
       } else {
-        updatedUserFields.phoneNumber = ''; // Set to empty if cleared
+        updatedUserFields.phoneNumber = '';
       }
     }
     
-    // Construct address, considering potential country change
     const addressCountry = (form.formState.dirtyFields.countryIsoCode && countryData)
                            ? countryData.name 
                            : (user.address?.country || user.country);
@@ -223,12 +214,11 @@ export default function SettingsPage() {
       city: data.addressCity || '',
       state: data.addressState || '',
       zip: data.addressZip || '',
-      country: addressCountry, 
+      country: addressCountry || user.country, 
     };
     
     let balanceUpdated = false;
     if (isBalanceEditing && data.balance !== user.balance) {
-      // Check if balance field was actually made dirty by the user, even if isBalanceEditing is true
       if (form.formState.dirtyFields.balance) {
         const success = await updateUserBalance(data.balance, ADMIN_CODE); 
         if (success) {
@@ -239,44 +229,26 @@ export default function SettingsPage() {
       }
     }
     
-    // This directly updates the user in AuthContext which should persist it to localStorage
     setUser(prevUser => {
       if (!prevUser) return null;
       
-      const userToUpdate = { ...prevUser };
+      const userToUpdate = { ...prevUser, ...updatedUserFields }; // Apply base updates
 
-      // Conditionally apply updates for fields that might not be in updatedUserFields if not dirty
-      if (form.formState.dirtyFields.firstName) userToUpdate.firstName = data.firstName;
-      if (form.formState.dirtyFields.lastName) userToUpdate.lastName = data.lastName;
-      if (form.formState.dirtyFields.email) userToUpdate.email = data.email;
-      
-      if (form.formState.dirtyFields.countryIsoCode) {
-        userToUpdate.country = countryData?.name || prevUser.country;
+      // Explicitly set address if any address field OR country changed
+      // as updatedUserFields.address already contains the correct structure
+      if (form.formState.dirtyFields.addressStreet || 
+          form.formState.dirtyFields.addressCity || 
+          form.formState.dirtyFields.addressState || 
+          form.formState.dirtyFields.addressZip ||
+          form.formState.dirtyFields.countryIsoCode ) {
+        userToUpdate.address = updatedUserFields.address;
       }
-      
-      if (form.formState.dirtyFields.phoneNumber) {
-        // Use the updatedUserFields.phoneNumber which has the full logic from above
-        userToUpdate.phoneNumber = updatedUserFields.phoneNumber;
-      }
-      
-      // Address fields are always taken from `data` as they can be empty strings.
-      // The address country logic depends on whether countryIsoCode was dirtied.
-      const newAddressCountry = (form.formState.dirtyFields.countryIsoCode && countryData)
-                                ? countryData.name
-                                : (prevUser.address?.country || userToUpdate.country); // Use updated country if changed
-      userToUpdate.address = {
-        street: data.addressStreet || '',
-        city: data.addressCity || '',
-        state: data.addressState || '',
-        zip: data.addressZip || '',
-        country: newAddressCountry,
-      };
 
 
-      if (balanceUpdated) { // This means balance was successfully updated via admin code
+      if (balanceUpdated) { 
         userToUpdate.balance = data.balance;
       }
-      return userToUpdate; // AuthContext's setUser will handle localStorage update
+      return userToUpdate;
     });
 
     setIsLoading(false);
@@ -291,7 +263,6 @@ export default function SettingsPage() {
         form.setValue('password', '');
         form.setValue('confirmPassword', '');
     }
-    // Important: Reset dirty state after successful save, so the button disables correctly
     form.reset(form.getValues(), { keepDirty: false, keepSubmitSucceeded: true });
   }
 
@@ -303,7 +274,6 @@ export default function SettingsPage() {
         <CardHeader>
           <div className="flex items-center gap-4">
             <Avatar className="h-20 w-20">
-              {/* <AvatarImage src="/placeholder-user.jpg" alt={currentFullName} data-ai-hint="profile picture" /> */}
               <AvatarFallback className="text-3xl bg-primary/20 text-primary">
                 {getInitials(user.firstName, user.lastName)}
               </AvatarFallback>
@@ -422,7 +392,7 @@ export default function SettingsPage() {
                      <Select 
                         onValueChange={(value) => {
                           field.onChange(value);
-                          form.setValue('phoneNumber', '', {shouldDirty: true}); // Mark as dirty if country changes
+                          form.setValue('phoneNumber', '', {shouldDirty: true}); 
                         }} 
                         value={field.value || ''} 
                         defaultValue={field.value || ''}>
@@ -451,9 +421,9 @@ export default function SettingsPage() {
                     <FormLabel>Phone Number</FormLabel>
                     <FormControl>
                       <PhoneNumberInput 
-                        countryIsoCode={selectedCountry?.code || (user.country ? COUNTRIES_LIST.find(c=>c.name === user.country)?.code : '')} // Fallback to user's current country for display if form's country isn't set
+                        countryIsoCode={selectedCountry?.code || (user.country ? COUNTRIES_LIST.find(c=>c.name === user.country)?.code : '')}
                         value={field.value || ''} 
-                        onChange={(val) => field.onChange(val)} // Ensure RHF is updated
+                        onChange={(val) => field.onChange(val)}
                         onBlur={field.onBlur}
                       />
                     </FormControl>
@@ -491,7 +461,7 @@ export default function SettingsPage() {
                         name="addressState"
                         render={({ field }) => (
                             <FormItem>
-                            <FormLabel>State / Province</FormLabel>
+                            <FormLabel>State and Province</FormLabel>
                             <FormControl><Input placeholder="CA" {...field} value={field.value || ''} /></FormControl>
                             <FormMessage />
                             </FormItem>
