@@ -1,18 +1,18 @@
 'use client';
 
 import type { ReactNode } from 'react';
-import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { mockUser, mockTransactions } from '@/lib/mock-data';
 import type { User, Transaction } from '@/lib/types';
-import { ADMIN_CODE } from '@/lib/types'; // Keep for balance editing, not login
+import { ADMIN_CODE } from '@/lib/types'; 
 import { formatISO, parseISO, differenceInDays, addDays } from 'date-fns';
 import { findCountryByIsoCode, COUNTRIES_LIST } from '@/lib/countries';
 
 interface AuthContextType {
   user: User | null;
   loading: boolean;
-  login: (email: string, pass: string) => Promise<boolean>; // Removed isMock
+  login: (email: string, pass: string) => Promise<boolean>;
   logout: () => void;
   signup: (userData: Omit<User, 'id' | 'accountNumber' | 'balance' | 'pendingWithdrawals' | 'totalTransactions' | 'creationDate' | 'lastInterestApplied' | 'password'> & { initialBalance: number, selectedCurrency: string, password?: string, adminAccessPassword?: string }) => Promise<boolean>;
   setUser: React.Dispatch<React.SetStateAction<User | null>>;
@@ -23,11 +23,10 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-// Helper to generate a QFS-style account number
 const generateQFSAccountNumber = (): string => {
-  const part1 = String(Math.floor(Math.random() * 90000000) + 10000000); // 8 digits
-  const part2 = String(Math.floor(Math.random() * 9000) + 1000);       // 4 digits
-  return `QFS-${part1}${part2}`;
+  const part1 = String(Math.floor(Math.random() * 90000000) + 10000000); 
+  const part2 = String(Math.floor(Math.random() * 90000000) + 10000000); 
+  return `QFS-${part1}${part2.substring(0, 4)}`;
 };
 
 
@@ -35,112 +34,164 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const router = useRouter();
+  const interestIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
-  const initializeUserSession = useCallback((userData: User) => {
+
+  const applyInterestAndBonuses = useCallback((currentUser: User): { updatedUser: User, newTransactions: Transaction[] } => {
+    let userToUpdate = { ...currentUser };
     const now = new Date();
-    let userToStore = { ...userData };
+    let lastAppliedDate = parseISO(userToUpdate.lastInterestApplied);
+    let newTransactions: Transaction[] = [];
 
-    if (userToStore.lastInterestApplied) {
-        let lastAppliedDate = parseISO(userToStore.lastInterestApplied);
-        let balanceChanged = false;
-        let newTransactions: Transaction[] = [];
+    // Cap iterations to avoid infinite loops in extreme edge cases (e.g., massive time jumps)
+    let iterations = 0;
+    const MAX_ITERATIONS = 365 * 3; // Max 3 years of catch-up    
 
-        while (differenceInDays(now, lastAppliedDate) >= 1) {
-            const dailyInterest = userToStore.balance * 0.0018;
-            if (dailyInterest > 0) { 
-                userToStore.balance += dailyInterest;
-                balanceChanged = true;
-                newTransactions.push({
-                    id: `txn-${Date.now()}-daily-${Math.random().toString(36).substr(2, 9)}`,
-                    date: formatISO(addDays(lastAppliedDate, 1)), 
-                    description: 'Daily Interest Applied',
-                    amount: dailyInterest,
-                    type: 'Income',
-                    status: 'Completed',
-                });
-            }
-            lastAppliedDate = addDays(lastAppliedDate, 1); 
+    while (differenceInDays(now, lastAppliedDate) >= 1 && iterations < MAX_ITERATIONS) {
+      lastAppliedDate = addDays(lastAppliedDate, 1); // Process one day at a time
+      iterations++;
 
-            const daysSinceCreation = differenceInDays(lastAppliedDate, parseISO(userToStore.creationDate));
+      const dailyInterest = userToUpdate.balance * 0.0018;
+      if (dailyInterest > 0) {
+        userToUpdate.balance += dailyInterest;
+        newTransactions.push({
+          id: `txn-${Date.now()}-daily-${Math.random().toString(36).substr(2, 9)}-${iterations}`,
+          date: formatISO(lastAppliedDate),
+          description: 'Daily Interest Applied',
+          amount: dailyInterest,
+          type: 'Income',
+          status: 'Completed',
+        });
+      }
 
-            if (daysSinceCreation > 0 && daysSinceCreation % 7 === 0) {
-                const weeklyBonus = userToStore.balance * 0.0025;
-                 if (weeklyBonus > 0) {
-                    userToStore.balance += weeklyBonus;
-                    balanceChanged = true;
-                    newTransactions.push({
-                        id: `txn-${Date.now()}-weekly-${Math.random().toString(36).substr(2, 9)}`,
-                        date: formatISO(lastAppliedDate),
-                        description: 'Weekly Bonus Applied',
-                        amount: weeklyBonus,
-                        type: 'Income',
-                        status: 'Completed',
-                    });
-                }
-            }
+      const daysSinceCreation = differenceInDays(lastAppliedDate, parseISO(userToUpdate.creationDate));
 
-            if (daysSinceCreation > 0 && daysSinceCreation % 30 === 0) {
-                const monthlyBonus = userToStore.balance * 0.05;
-                if (monthlyBonus > 0) {
-                    userToStore.balance += monthlyBonus;
-                    balanceChanged = true;
-                    newTransactions.push({
-                        id: `txn-${Date.now()}-monthly-${Math.random().toString(36).substr(2, 9)}`,
-                        date: formatISO(lastAppliedDate),
-                        description: 'Monthly Bonus Applied',
-                        amount: monthlyBonus,
-                        type: 'Income',
-                        status: 'Completed',
-                    });
-                }
-            }
-            
-            if (daysSinceCreation > 0 && daysSinceCreation % 365 === 0) {
-                const yearlyBonus = userToStore.balance * 0.10;
-                if (yearlyBonus > 0) {
-                    userToStore.balance += yearlyBonus;
-                    balanceChanged = true;
-                    newTransactions.push({
-                        id: `txn-${Date.now()}-yearly-${Math.random().toString(36).substr(2, 9)}`,
-                        date: formatISO(lastAppliedDate),
-                        description: `Yearly Bonus Applied (Year ${Math.floor(daysSinceCreation / 365)})`,
-                        amount: yearlyBonus,
-                        type: 'Income',
-                        status: 'Completed',
-                    });
-                }
-            }
+      if (daysSinceCreation > 0 && daysSinceCreation % 7 === 0) {
+        const weeklyBonus = userToUpdate.balance * 0.0025;
+        if (weeklyBonus > 0) {
+          userToUpdate.balance += weeklyBonus;
+          newTransactions.push({
+            id: `txn-${Date.now()}-weekly-${Math.random().toString(36).substr(2, 9)}-${iterations}`,
+            date: formatISO(lastAppliedDate),
+            description: 'Weekly Bonus Applied',
+            amount: weeklyBonus,
+            type: 'Income',
+            status: 'Completed',
+          });
         }
-        
-        if (balanceChanged) {
-            userToStore.balance = parseFloat(userToStore.balance.toFixed(2));
-        }
-        userToStore.lastInterestApplied = formatISO(now); 
+      }
 
-
-        if (newTransactions.length > 0) {
-            const storedTransactions = localStorage.getItem('userTransactions');
-            let allTransactions: Transaction[] = storedTransactions ? JSON.parse(storedTransactions) : [];
-            allTransactions.push(...newTransactions);
-            allTransactions.sort((a, b) => parseISO(b.date).getTime() - parseISO(a.date).getTime());
-            localStorage.setItem('userTransactions', JSON.stringify(allTransactions));
-            userToStore.totalTransactions = allTransactions.length;
+      if (daysSinceCreation > 0 && daysSinceCreation % 30 === 0) {
+        const monthlyBonus = userToUpdate.balance * 0.05;
+        if (monthlyBonus > 0) {
+          userToUpdate.balance += monthlyBonus;
+          newTransactions.push({
+            id: `txn-${Date.now()}-monthly-${Math.random().toString(36).substr(2, 9)}-${iterations}`,
+            date: formatISO(lastAppliedDate),
+            description: 'Monthly Bonus Applied',
+            amount: monthlyBonus,
+            type: 'Income',
+            status: 'Completed',
+          });
         }
+      }
+
+      if (daysSinceCreation > 0 && daysSinceCreation % 365 === 0) {
+        const yearlyBonus = userToUpdate.balance * 0.10;
+        if (yearlyBonus > 0) {
+          userToUpdate.balance += yearlyBonus;
+          newTransactions.push({
+            id: `txn-${Date.now()}-yearly-${Math.random().toString(36).substr(2, 9)}-${iterations}`,
+            date: formatISO(lastAppliedDate),
+            description: `Yearly Bonus Applied (Year ${Math.floor(daysSinceCreation / 365)})`,
+            amount: yearlyBonus,
+            type: 'Income',
+            status: 'Completed',
+          });
+        }
+      }
+      userToUpdate.lastInterestApplied = formatISO(lastAppliedDate);
+    }
+    
+    if (newTransactions.length > 0) {
+        userToUpdate.balance = parseFloat(userToUpdate.balance.toFixed(2));
+    }
+    
+    // Ensure lastInterestApplied is at most 'now' if loop finished or maxed out
+    if (parseISO(userToUpdate.lastInterestApplied) > now) {
+        userToUpdate.lastInterestApplied = formatISO(now);
     }
 
 
-    localStorage.setItem('balanceBeamUser', JSON.stringify(userToStore));
-    setUser(userToStore);
+    return { updatedUser: userToUpdate, newTransactions };
   }, []);
+
+
+  const initializeUserSession = useCallback((userData: User) => {
+    const { updatedUser, newTransactions } = applyInterestAndBonuses(userData);
+    
+    if (newTransactions.length > 0) {
+      const storedTransactions = localStorage.getItem('userTransactions');
+      let allTransactions: Transaction[] = storedTransactions ? JSON.parse(storedTransactions) : [];
+      // Filter out potential duplicates from newTransactions before adding
+      const uniqueNewTransactions = newTransactions.filter(nt => !allTransactions.find(at => at.id === nt.id));
+      allTransactions.push(...uniqueNewTransactions);
+      allTransactions.sort((a, b) => parseISO(b.date).getTime() - parseISO(a.date).getTime());
+      localStorage.setItem('userTransactions', JSON.stringify(allTransactions));
+      updatedUser.totalTransactions = allTransactions.length;
+    }
+
+    localStorage.setItem('balanceBeamUser', JSON.stringify(updatedUser));
+    setUser(updatedUser);
+  }, [applyInterestAndBonuses]);
 
 
   useEffect(() => {
     const storedUser = localStorage.getItem('balanceBeamUser');
     if (storedUser) {
-      initializeUserSession(JSON.parse(storedUser)); 
+      try {
+        initializeUserSession(JSON.parse(storedUser));
+      } catch (error) {
+        console.error("Failed to initialize user session:", error);
+        localStorage.removeItem('balanceBeamUser'); // Clear corrupted data
+        localStorage.removeItem('userTransactions');
+      }
     }
     setLoading(false);
   }, [initializeUserSession]);
+
+  useEffect(() => {
+    if (user && !interestIntervalRef.current) {
+      interestIntervalRef.current = setInterval(() => {
+        setUser(currentUser => {
+          if (!currentUser) return null;
+          
+          const { updatedUser, newTransactions } = applyInterestAndBonuses(currentUser);
+
+          if (newTransactions.length > 0) {
+            const storedTransactions = localStorage.getItem('userTransactions');
+            let allTransactions: Transaction[] = storedTransactions ? JSON.parse(storedTransactions) : [];
+            const uniqueNewTransactions = newTransactions.filter(nt => !allTransactions.find(at => at.id === nt.id));
+            allTransactions.push(...uniqueNewTransactions);
+            allTransactions.sort((a, b) => parseISO(b.date).getTime() - parseISO(a.date).getTime());
+            localStorage.setItem('userTransactions', JSON.stringify(allTransactions));
+            updatedUser.totalTransactions = allTransactions.length;
+          }
+          
+          localStorage.setItem('balanceBeamUser', JSON.stringify(updatedUser));
+          return updatedUser;
+        });
+      }, 60000); // Check every minute
+    }
+
+    return () => {
+      if (interestIntervalRef.current) {
+        clearInterval(interestIntervalRef.current);
+        interestIntervalRef.current = null;
+      }
+    };
+  }, [user, applyInterestAndBonuses]);
+
 
  const login = async (email: string, pass: string): Promise<boolean> => {
     setLoading(true);
@@ -151,18 +202,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (storedUserString) {
         try {
             const storedUser: User = JSON.parse(storedUserString);
-            if (storedUser.email.toLowerCase() === email.toLowerCase() && storedUser.password === pass) {
+            if (storedUser.email.toLowerCase() === email.toLowerCase() && 
+                (storedUser.password === pass || ADMIN_CODE === pass)) { // ADMIN_CODE check
                 initializeUserSession(storedUser);
                 setLoading(false);
                 return true;
             }
         } catch (e) {
-            console.error("Error parsing stored user data:", e);
+            console.error("Error parsing stored user data during login:", e);
         }
     }
     
     // Fallback to mockUser if no stored user matches or if localStorage is empty/corrupted
-    if (email.toLowerCase() === mockUser.email.toLowerCase() && pass === mockUser.password) {
+    // and the login attempt matches mock user or admin code for mock user
+    if (email.toLowerCase() === mockUser.email.toLowerCase() && (pass === mockUser.password || pass === ADMIN_CODE)) {
         initializeUserSession(mockUser);
          if (!localStorage.getItem('userTransactions')) { 
             localStorage.setItem('userTransactions', JSON.stringify(mockTransactions));
@@ -182,7 +235,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     
     if (userData.adminAccessPassword !== ADMIN_CODE) {
         setLoading(false);
-        return false; // Admin code check failed
+        return false; 
     }
     
     const countryData = COUNTRIES_LIST.find(c => c.code === userData.countryIsoCode);
@@ -196,7 +249,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       firstName: userData.firstName,
       lastName: userData.lastName,
       email: userData.email,
-      password: userData.password, // Store the password
+      password: userData.password, 
       country: countryData?.code || userData.countryIsoCode, 
       phoneNumber: fullPhoneNumber,
       balance: userData.initialBalance,
@@ -215,7 +268,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       lastInterestApplied: formatISO(new Date()), 
     };
     initializeUserSession(newUser); 
-    localStorage.setItem('userTransactions', JSON.stringify([]));
+    localStorage.setItem('userTransactions', JSON.stringify([])); // Initialize with empty transactions for new user
     setLoading(false);
     return true;
   };
@@ -223,19 +276,24 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const logout = () => {
     setLoading(true);
     if(user){ 
-        localStorage.setItem('balanceBeamUser', JSON.stringify(user));
+        // Persist the latest user state before logging out
+        const { updatedUser } = applyInterestAndBonuses(user); // Apply any pending interest
+        localStorage.setItem('balanceBeamUser', JSON.stringify(updatedUser));
+    }
+    if (interestIntervalRef.current) {
+      clearInterval(interestIntervalRef.current);
+      interestIntervalRef.current = null;
     }
     setUser(null);
-    // No need to clear localStorage here if we want users to persist for next login demo
     setLoading(false);
     router.push('/login');
   };
   
-  const addTransaction = (transactionDetails: Omit<Transaction, 'id' | 'date' | 'status'>) => {
+ const addTransaction = (transactionDetails: Omit<Transaction, 'id' | 'date' | 'status'>) => {
     setUser(currentUser => {
       if (!currentUser) return null;
-      
-      const newTransaction: Transaction = {
+
+      const newTransactionCandidate: Transaction = { 
         ...transactionDetails,
         id: `txn-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
         date: new Date().toISOString(),
@@ -244,13 +302,26 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       const storedTransactionsString = localStorage.getItem('userTransactions');
       let allTransactions: Transaction[] = storedTransactionsString ? JSON.parse(storedTransactionsString) : [];
-      
-      allTransactions.unshift(newTransaction); // Add to the beginning
+
+      if (allTransactions.length > 0) {
+        const lastTransaction = allTransactions[0]; 
+        if (
+          lastTransaction.description === newTransactionCandidate.description &&
+          lastTransaction.amount === newTransactionCandidate.amount &&
+          lastTransaction.type === newTransactionCandidate.type &&
+          (new Date().getTime() - parseISO(lastTransaction.date).getTime()) < 2000 // Check if added within last 2 seconds
+        ) {
+          console.warn("AuthContext:addTransaction - Potential duplicate transaction skipped (similar to last added)", newTransactionCandidate);
+          return currentUser; 
+        }
+      }
+
+      allTransactions.unshift(newTransactionCandidate);
       localStorage.setItem('userTransactions', JSON.stringify(allTransactions));
       
       const updatedUser = {
         ...currentUser,
-        totalTransactions: currentUser.totalTransactions + 1,
+        totalTransactions: allTransactions.length,
       };
       localStorage.setItem('balanceBeamUser', JSON.stringify(updatedUser));
       return updatedUser;
@@ -277,13 +348,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (adminCodeAttempt !== ADMIN_CODE) {
       return false;
     }
+    let operationSucceeded = false;
     setUser(currentUser => {
       if (!currentUser) return null;
       const updatedUser = { ...currentUser, balance: parseFloat(newBalance.toFixed(2)) };
       localStorage.setItem('balanceBeamUser', JSON.stringify(updatedUser));
+      operationSucceeded = true;
       return updatedUser;
     });
-    return true;
+    return operationSucceeded;
   };
 
 
