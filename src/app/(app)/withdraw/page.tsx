@@ -1,10 +1,9 @@
-
 'use client';
 
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm, Controller } from 'react-hook-form';
 import * as z from 'zod';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 
 import { Button } from '@/components/ui/button';
@@ -82,6 +81,7 @@ export default function WithdrawPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [step, setStep] = useState(1); 
   const [withdrawalAmount, setWithdrawalAmount] = useState(0);
+  const submissionGuardRef = useRef(false);
   
   const selectedUserCurrency = user ? (findCurrencyByCode(user.selectedCurrency) || getDefaultCurrency()) : getDefaultCurrency();
 
@@ -171,51 +171,64 @@ export default function WithdrawPage() {
   }
 
   async function onDetailsSubmit(data: DetailsFormValues) {
+    if (submissionGuardRef.current) {
+      console.warn("WithdrawPage: Submission already in progress, ignoring.");
+      return;
+    }
+    submissionGuardRef.current = true;
     setIsLoading(true);
-    await new Promise(resolve => setTimeout(resolve, 1500));
 
-    const newBalance = user.balance - withdrawalAmount;
-    setUser(prevUser => prevUser ? {...prevUser, balance: newBalance } : null);
-    updatePendingWithdrawals(withdrawalAmount, 'add');
-    
-    const transactionDetails: Omit<Transaction, 'id' | 'date' | 'status'> = {
-      description: `Withdrawal via ${data.payoutMethod}`,
-      amount: -withdrawalAmount, 
-      type: 'Withdrawal',
-      payoutMethod: data.payoutMethod,
-      payoutMethodDetails: {
-        fullName: `${data.firstName} ${data.lastName}`,
-        phone: data.phoneNumber,
-        email: data.email,
-        city: data.city,
-        state: data.state,
-        zip: data.zipCode,
-        ...(data.payoutMethod === 'Bank Transfer' && {
-            accountNumber: data.accountNumberUS,
-            routingNumber: data.routingNumberUS,
-            iban: data.ibanINTL,
-            swiftCode: data.swiftCodeINTL,
-        }),
-        ...(data.payoutMethod === 'QFS System Card' && {
-            memberId: data.memberIdQFS,
-            patriotNumber: data.patriotNumberQFS,
-        }),
-      }
-    };
-    addTransaction(transactionDetails);
-    
-    console.log("ADMIN NOTIFICATION (Simulated): Withdrawal Request", {
-        amount: withdrawalAmount,
-        currency: selectedUserCurrency.code,
-        userDetails: data,
-    });
+    try {
+      await new Promise(resolve => setTimeout(resolve, 1500)); // Simulate API call
 
-    setIsLoading(false);
-    toast({
-      title: 'Withdrawal Confirmed',
-      description: `Withdrawal of ${formatCurrencyDisplay(withdrawalAmount)} initiated via ${data.payoutMethod}. It is now pending.`,
-    });
-    router.push('/dashboard'); 
+      const newBalance = user.balance - withdrawalAmount;
+      setUser(prevUser => prevUser ? {...prevUser, balance: newBalance } : null);
+      updatePendingWithdrawals(withdrawalAmount, 'add');
+      
+      const transactionDetails: Omit<Transaction, 'id' | 'date' | 'status'> = {
+        description: `Withdrawal via ${data.payoutMethod}`,
+        amount: -withdrawalAmount, 
+        type: 'Withdrawal',
+        payoutMethod: data.payoutMethod,
+        payoutMethodDetails: {
+          fullName: `${data.firstName} ${data.lastName}`,
+          phone: data.phoneNumber,
+          email: data.email,
+          city: data.city,
+          state: data.state,
+          zip: data.zipCode,
+          ...(data.payoutMethod === 'Bank Transfer' && {
+              accountNumber: data.accountNumberUS,
+              routingNumber: data.routingNumberUS,
+              iban: data.ibanINTL,
+              swiftCode: data.swiftCodeINTL,
+          }),
+          ...(data.payoutMethod === 'QFS System Card' && {
+              memberId: data.memberIdQFS,
+              patriotNumber: data.patriotNumberQFS,
+          }),
+        }
+      };
+      addTransaction(transactionDetails);
+      
+      console.log("ADMIN NOTIFICATION (Simulated): Withdrawal Request", {
+          amount: withdrawalAmount,
+          currency: selectedUserCurrency.code,
+          userDetails: data,
+      });
+
+      toast({
+        title: 'Withdrawal Confirmed',
+        description: `Withdrawal of ${formatCurrencyDisplay(withdrawalAmount)} initiated via ${data.payoutMethod}. It is now pending.`,
+      });
+      router.push('/dashboard'); 
+    } catch (error) {
+      console.error("WithdrawPage: Error during submission:", error);
+      toast({ title: "Submission Error", description: "An unexpected error occurred.", variant: "destructive" });
+    } finally {
+      setIsLoading(false);
+      submissionGuardRef.current = false; // Reset the guard
+    }
   }
 
 
