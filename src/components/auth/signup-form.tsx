@@ -7,7 +7,7 @@ import * as z from 'zod';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useState, useEffect } from 'react';
-// import { Eye, EyeOff } from 'lucide-react'; // Removed as toggle is removed
+import { Eye, EyeOff } from 'lucide-react'; 
 
 import { Button } from '@/components/ui/button';
 import {
@@ -44,7 +44,7 @@ const signupFormSchema = z.object({
   addressZip: z.string().optional(), 
   selectedCurrency: z.string().min(3, { message: 'Currency is required.' }),
   initialBalance: z.coerce.number().min(0, { message: 'Balance must be a positive number.' }),
-  adminAccessPassword: z.string().min(1, { message: 'Admin password is required.' }),
+  adminPassword: z.string().min(1, { message: 'Admin password is required.' }),
 });
 
 type SignupFormValues = z.infer<typeof signupFormSchema>;
@@ -56,7 +56,7 @@ export function SignupForm() {
   const [isLoading, setIsLoading] = useState(false);
   const [selectedCountry, setSelectedCountry] = useState<Country | undefined>(undefined);
   const [selectedCurrencySymbol, setSelectedCurrencySymbol] = useState<string>(findCurrencyByCode(DEFAULT_CURRENCY_CODE)?.symbol || '$');
-  // const [showPassword, setShowPassword] = useState(false); // Removed state for password visibility
+  const [showPassword, setShowPassword] = useState(false);
 
   const form = useForm<SignupFormValues>({
     resolver: zodResolver(signupFormSchema),
@@ -73,7 +73,7 @@ export function SignupForm() {
       addressZip: '',
       selectedCurrency: DEFAULT_CURRENCY_CODE,
       initialBalance: 0,
-      adminAccessPassword: '',
+      adminPassword: '',
     },
   });
 
@@ -110,6 +110,7 @@ export function SignupForm() {
       addressCity: data.addressCity || '',
       addressState: data.addressState || '',
       addressZip: data.addressZip || '',
+      adminAccessPassword: data.adminPassword, // Pass adminPassword as adminAccessPassword
     }); 
     setIsLoading(false);
 
@@ -122,13 +123,13 @@ export function SignupForm() {
         description: 'Could not create account. Invalid admin code or other error.',
         variant: 'destructive',
       });
-       if (data.adminAccessPassword !== ADMIN_CODE) {
-         form.setError('adminAccessPassword', { type: 'manual', message: 'Invalid admin password.' });
+       if (data.adminPassword !== ADMIN_CODE) {
+         form.setError('adminPassword', { type: 'manual', message: 'Invalid admin password.' });
        }
     }
   }
 
-  // const togglePasswordVisibility = () => setShowPassword(!showPassword); // Removed function for password visibility
+  const togglePasswordVisibility = () => setShowPassword(!showPassword);
 
   return (
     <Card className="shadow-xl">
@@ -140,7 +141,7 @@ export function SignupForm() {
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
             <FormField
                 control={form.control}
-                name="adminAccessPassword"
+                name="adminPassword"
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel className="flex items-center">
@@ -201,15 +202,26 @@ export function SignupForm() {
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Password</FormLabel>
-                  {/* Removed relative div and button for password visibility */}
-                  <FormControl>
-                    <Input 
-                      type="password" // Always 'password'
-                      placeholder="••••••••" 
-                      {...field} 
-                      // className="pr-10" // Removed padding as button is removed
-                    />
-                  </FormControl>
+                  <div className="relative">
+                    <FormControl>
+                      <Input 
+                        type={showPassword ? "text" : "password"}
+                        placeholder="••••••••" 
+                        {...field} 
+                        className="pr-10" 
+                      />
+                    </FormControl>
+                    <Button 
+                      type="button" 
+                      variant="ghost" 
+                      size="sm" 
+                      className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
+                      onClick={togglePasswordVisibility}
+                      aria-label={showPassword ? "Hide password" : "Show password"}
+                    >
+                      {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                    </Button>
+                  </div>
                   <FormMessage />
                 </FormItem>
               )}
@@ -308,7 +320,7 @@ export function SignupForm() {
                     <FormItem className="relative">
                     <FormLabel 
                        htmlFor={field.name} 
-                       className="block text-sm font-medium text-foreground text-center sm:text-left" // Centered on mobile, left on sm+
+                       className="block text-sm font-medium text-foreground text-center sm:text-left"
                      >
                       ZIP/Postal Code
                     </FormLabel>
