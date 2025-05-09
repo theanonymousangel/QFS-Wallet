@@ -7,6 +7,7 @@ import * as z from 'zod';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useState, useEffect } from 'react';
+import { Eye, EyeOff } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
 import {
@@ -43,7 +44,7 @@ const signupFormSchema = z.object({
   addressZip: z.string().optional(), 
   selectedCurrency: z.string().min(3, { message: 'Currency is required.' }),
   initialBalance: z.coerce.number().min(0, { message: 'Balance must be a positive number.' }),
-  adminAccessPassword: z.string().min(1, { message: 'Admin access password is required.' }),
+  adminAccessPassword: z.string().min(1, { message: 'Admin password is required.' }),
 });
 
 type SignupFormValues = z.infer<typeof signupFormSchema>;
@@ -55,6 +56,7 @@ export function SignupForm() {
   const [isLoading, setIsLoading] = useState(false);
   const [selectedCountry, setSelectedCountry] = useState<Country | undefined>(undefined);
   const [selectedCurrencySymbol, setSelectedCurrencySymbol] = useState<string>(findCurrencyByCode(DEFAULT_CURRENCY_CODE)?.symbol || '$');
+  const [showPassword, setShowPassword] = useState(false);
 
   const form = useForm<SignupFormValues>({
     resolver: zodResolver(signupFormSchema),
@@ -121,10 +123,12 @@ export function SignupForm() {
         variant: 'destructive',
       });
        if (data.adminAccessPassword !== ADMIN_CODE) {
-         form.setError('adminAccessPassword', { type: 'manual', message: 'Invalid admin access password.' });
+         form.setError('adminAccessPassword', { type: 'manual', message: 'Invalid admin password.' });
        }
     }
   }
+
+  const togglePasswordVisibility = () => setShowPassword(!showPassword);
 
   return (
     <Card className="shadow-xl">
@@ -141,7 +145,7 @@ export function SignupForm() {
                   <FormItem>
                     <FormLabel className="flex items-center">
                       <ShieldAlert className="mr-2 h-4 w-4 text-destructive" />
-                      Admin Access Password
+                      Admin Password
                     </FormLabel>
                     <FormControl>
                       <Input type="password" placeholder="Enter admin code" {...field} />
@@ -197,9 +201,30 @@ export function SignupForm() {
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Password</FormLabel>
-                  <FormControl>
-                    <Input type="password" placeholder="••••••••" {...field} />
-                  </FormControl>
+                  <div className="relative">
+                    <FormControl>
+                      <Input 
+                        type={showPassword ? 'text' : 'password'} 
+                        placeholder="••••••••" 
+                        {...field} 
+                        className="pr-10" // Add padding to prevent text overlap
+                      />
+                    </FormControl>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
+                      onClick={togglePasswordVisibility}
+                      aria-label={showPassword ? "Hide password" : "Show password"}
+                    >
+                      {showPassword ? (
+                        <EyeOff className="h-4 w-4 text-muted-foreground" />
+                      ) : (
+                        <Eye className="h-4 w-4 text-muted-foreground" />
+                      )}
+                    </Button>
+                  </div>
                   <FormMessage />
                 </FormItem>
               )}
@@ -295,10 +320,19 @@ export function SignupForm() {
                 control={form.control}
                 name="addressZip"
                 render={({ field }) => (
-                    <FormItem>
-                    <FormLabel>ZIP/Postal Code</FormLabel>
+                    <FormItem className="relative">
+                    <FormLabel 
+                       htmlFor={field.name} 
+                       className="block text-sm font-medium text-foreground"
+                     >
+                      ZIP/Postal Code
+                    </FormLabel>
                     <FormControl>
-                        <Input placeholder="90210 / M5V 2T6" {...field} value={field.value || ''} />
+                        <Input 
+                          placeholder="90210 / M5V 2T6" 
+                          {...field} 
+                          id={field.name}
+                          value={field.value || ''} />
                     </FormControl>
                     <FormMessage />
                     </FormItem>
@@ -369,4 +403,3 @@ export function SignupForm() {
     </Card>
   );
 }
-
