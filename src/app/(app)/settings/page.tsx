@@ -328,7 +328,7 @@ export default function SettingsPage() {
         <CardHeader>
           <div className="flex items-center gap-4">
             <Avatar className="h-20 w-20">
-              <AvatarFallback className="text-3xl bg-primary/20 text-primary">
+              <AvatarFallback className="text-3xl">
                 {getInitials(user.firstName, user.lastName)}
               </AvatarFallback>
             </Avatar>
