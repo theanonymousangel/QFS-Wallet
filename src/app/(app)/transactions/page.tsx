@@ -307,10 +307,10 @@ export default function TransactionsPage() {
                 <TableHeader>
                   <TableRow>
                     <TableHead className="w-[60px] min-w-[60px] hidden sm:table-cell">Icon</TableHead>
-                    <TableHead onClick={() => handleSort('date')} className="cursor-pointer hover:text-primary min-w-[150px]">
+                    <TableHead onClick={() => handleSort('date')} className="cursor-pointer hover:text-primary min-w-[130px]">
                       Date <ArrowUpDown className="ml-1 inline-block h-4 w-4" />
                     </TableHead>
-                    <TableHead onClick={() => handleSort('description')} className="cursor-pointer hover:text-primary min-w-[150px] sm:min-w-[200px]">
+                    <TableHead onClick={() => handleSort('description')} className="cursor-pointer hover:text-primary min-w-[120px] sm:min-w-[180px] lg:min-w-[250px]">
                       Description <ArrowUpDown className="ml-1 inline-block h-4 w-4" />
                     </TableHead>
                     <TableHead onClick={() => handleSort('type')} className="cursor-pointer hover:text-primary min-w-[100px] hidden md:table-cell">
