@@ -100,7 +100,7 @@ export function RecentTransactions() {
         ) : (
           <ul className="space-y-4">
             {recentTransactions.map((tx) => (
-              <li key={tx.id} className="flex items-center justify-between p-3 rounded-lg hover:bg-accent/20 transition-colors">
+              <li key={`${tx.id}-${tx.date}-${tx.amount}`} className="flex items-center justify-between p-3 rounded-lg hover:bg-accent/20 transition-colors">
                 <div className="flex items-center gap-3">
                   <div className="p-2 bg-muted rounded-full">
                     {getTransactionIcon(tx)}
@@ -109,7 +109,7 @@ export function RecentTransactions() {
                     <p className="font-medium text-foreground">{tx.description}</p>
                     <p className="text-sm text-muted-foreground">
                       {format(parseISO(tx.date), 'MMM dd, yyyy')} - {tx.type} 
-                      {tx.status !== 'Completed' && ` (${tx.status})`}
+                      {tx.status !== 'Completed' && ` (${tx.status === 'Pending' ? 'Processing' : tx.status})`}
                     </p>
                   </div>
                 </div>

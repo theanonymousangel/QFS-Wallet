@@ -131,7 +131,7 @@ export default function TransactionsPage() {
 
 
   const filteredAndSortedTransactions = useMemo(() => {
-    let transactions = Array.from(new Map(allTransactions.map(tx => [`${tx.id}-${tx.date}-${tx.amount}`, tx])).values());
+    let transactions = Array.from(new Map(allTransactions.map(tx => [`${tx.id}-${item.date}-${item.amount}`, tx])).values());
 
     if (searchTerm) {
       transactions = transactions.filter(tx =>
@@ -276,6 +276,7 @@ export default function TransactionsPage() {
       <Card className="shadow-lg">
         <CardHeader>
           <CardTitle>All Transactions</CardTitle>
+          
           <div className="mt-4 flex flex-col gap-4 sm:flex-row sm:items-center">
             <Input
               placeholder="Search descriptions, methods..."
@@ -369,7 +370,7 @@ export default function TransactionsPage() {
                             tx.status === 'Rejected' ? 'bg-red-100 text-red-700 border-red-200 dark:bg-red-900/50 dark:text-red-300 dark:border-red-700' :
                             'bg-gray-100 text-gray-700 border-gray-200 dark:bg-gray-900/50 dark:text-gray-300 dark:border-gray-700' // Style for 'Cancelled'
                           )}>
-                            {tx.status}
+                            {tx.status === 'Pending' ? 'Processing' : tx.status}
                           </span>
                         </TableCell>
                         <TableCell className="text-right space-x-1">
