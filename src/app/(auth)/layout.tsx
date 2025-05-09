@@ -17,7 +17,7 @@ export default function AuthLayout({
             QFS Wallet
           </h1>
           <p className="mt-2 text-muted-foreground">
-            Your Modern Wallet Experience
+            Easily and Securely Access Your Funds
           </p>
         </div>
         {children}
@@ -25,4 +25,3 @@ export default function AuthLayout({
     </div>
   );
 }
-
