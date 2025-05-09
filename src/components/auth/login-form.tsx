@@ -1,3 +1,4 @@
+
 'use client';
 
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -6,6 +7,7 @@ import * as z from 'zod';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
+import { Eye, EyeOff, Loader2 } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
 import {
@@ -20,7 +22,6 @@ import { Input } from '@/components/ui/input';
 import { useAuth } from '@/contexts/auth-context';
 import { useToast } from '@/hooks/use-toast';
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
-import { Loader2 } from 'lucide-react';
 
 const loginFormSchema = z.object({
   email: z.string().email({ message: 'Please enter a valid email.' }),
@@ -34,6 +35,7 @@ export function LoginForm() {
   const { login } = useAuth();
   const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
 
   const form = useForm<LoginFormValues>({
     resolver: zodResolver(loginFormSchema),
@@ -58,6 +60,8 @@ export function LoginForm() {
       });
     }
   }
+
+  const togglePasswordVisibility = () => setShowPassword(!showPassword);
 
   return (
     <Card className="shadow-xl">
@@ -86,9 +90,26 @@ export function LoginForm() {
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Password</FormLabel>
-                  <FormControl>
-                    <Input type="password" placeholder="••••••••" {...field} />
-                  </FormControl>
+                  <div className="relative">
+                    <FormControl>
+                      <Input
+                        type={showPassword ? 'text' : 'password'}
+                        placeholder="••••••••"
+                        {...field}
+                        className="pr-10"
+                      />
+                    </FormControl>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
+                      onClick={togglePasswordVisibility}
+                      aria-label={showPassword ? "Hide password" : "Show password"}
+                    >
+                      {showPassword ? <Eye className="h-4 w-4" /> : <EyeOff className="h-4 w-4" />}
+                    </Button>
+                  </div>
                   <FormMessage />
                 </FormItem>
               )}

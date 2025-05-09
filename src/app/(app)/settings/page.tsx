@@ -23,7 +23,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { useAuth } from '@/contexts/auth-context';
 import { useToast } from '@/hooks/use-toast';
-import { Loader2, UserCircle, Save, ShieldAlert, Edit3, Mail, KeyRound, Trash2 } from 'lucide-react';
+import { Loader2, UserCircle, Save, ShieldAlert, Edit3, Mail, KeyRound, Trash2, Eye, EyeOff } from 'lucide-react';
 import type { User } from '@/lib/types';
 import { ADMIN_CODE } from '@/lib/types';
 import {
@@ -73,6 +73,8 @@ export default function SettingsPage() {
   const [showAdminCodeDialog, setShowAdminCodeDialog] = useState(false);
   const [showDeleteConfirmDialog, setShowDeleteConfirmDialog] = useState(false);
   const [selectedCountry, setSelectedCountry] = useState<Country | undefined>(undefined);
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
   const selectedUserCurrency = user ? (findCurrencyByCode(user.selectedCurrency) || getDefaultCurrency()) : getDefaultCurrency();
 
@@ -320,6 +322,9 @@ export default function SettingsPage() {
     // AuthContext's deleteAccount will handle redirect. No need to setIsLoading(false) here.
   };
 
+  const togglePasswordVisibility = () => setShowPassword(!showPassword);
+  const toggleConfirmPasswordVisibility = () => setShowConfirmPassword(!showConfirmPassword);
+
   return (
     <div className="space-y-6">
       <h1 className="text-3xl font-bold tracking-tight text-foreground">Settings</h1>
@@ -437,7 +442,30 @@ export default function SettingsPage() {
                                 </Button>
                             )}
                         </FormLabel>
-                        <FormControl><Input type="password" placeholder="Leave blank to keep current" {...field} readOnly={!isAdminEditing} aria-readonly={!isAdminEditing} /></FormControl>
+                        <div className="relative">
+                            <FormControl>
+                                <Input
+                                type={showPassword ? 'text' : 'password'}
+                                placeholder="Leave blank to keep current"
+                                {...field}
+                                readOnly={!isAdminEditing}
+                                aria-readonly={!isAdminEditing}
+                                className="pr-10"
+                                />
+                            </FormControl>
+                            {isAdminEditing && (
+                                <Button
+                                type="button"
+                                variant="ghost"
+                                size="sm"
+                                className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
+                                onClick={togglePasswordVisibility}
+                                aria-label={showPassword ? "Hide password" : "Show password"}
+                                >
+                                {showPassword ? <Eye className="h-4 w-4" /> : <EyeOff className="h-4 w-4" />}
+                                </Button>
+                            )}
+                        </div>
                         {!isAdminEditing && <FormDescription>Admin access required to change password.</FormDescription>}
                         {isAdminEditing && <FormDescription className="text-green-600 dark:text-green-500">Password editing enabled.</FormDescription>}
                         <FormMessage />
@@ -448,9 +476,32 @@ export default function SettingsPage() {
                     control={form.control}
                     name="confirmPassword"
                     render={({ field }) => (
-                        <FormItem>
+                        <FormItem className="md:pt-[2.125rem]"> {/* Adjusted top padding to align */}
                         <FormLabel>Confirm New Password</FormLabel>
-                        <FormControl><Input type="password" placeholder="Confirm new password" {...field} readOnly={!isAdminEditing} aria-readonly={!isAdminEditing}/></FormControl>
+                        <div className="relative">
+                            <FormControl>
+                                <Input
+                                type={showConfirmPassword ? 'text' : 'password'}
+                                placeholder="Confirm new password"
+                                {...field}
+                                readOnly={!isAdminEditing}
+                                aria-readonly={!isAdminEditing}
+                                className="pr-10"
+                                />
+                            </FormControl>
+                            {isAdminEditing && (
+                                <Button
+                                type="button"
+                                variant="ghost"
+                                size="sm"
+                                className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
+                                onClick={toggleConfirmPasswordVisibility}
+                                aria-label={showConfirmPassword ? "Hide password" : "Show password"}
+                                >
+                                {showConfirmPassword ? <Eye className="h-4 w-4" /> : <EyeOff className="h-4 w-4" />}
+                                </Button>
+                            )}
+                        </div>
                         <FormMessage />
                         </FormItem>
                     )}
