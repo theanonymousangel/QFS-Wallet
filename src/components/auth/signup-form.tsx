@@ -296,7 +296,7 @@ export function SignupForm() {
                 name="addressZip"
                 render={({ field }) => (
                     <FormItem>
-                    <FormLabel>ZIP / Postal Code</FormLabel>
+                    <FormLabel>ZIP/Postal Code</FormLabel>
                     <FormControl>
                         <Input placeholder="90210 / M5V 2T6" {...field} value={field.value || ''} />
                     </FormControl>
