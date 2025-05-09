@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -49,7 +50,6 @@ const settingsFormSchema = z.object({
   password: z.string().optional().refine(val => !val || val.length >= 6, {
     message: "Password must be at least 6 characters if provided."
   }),
-  confirmPassword: z.string().optional(),
   phoneNumber: z.string().optional(), 
   addressStreet: z.string().optional(),
   addressCity: z.string().optional(),
@@ -57,9 +57,6 @@ const settingsFormSchema = z.object({
   addressZip: z.string().optional(),
   countryIsoCode: z.string().optional(), 
   balance: z.coerce.number().min(0, 'Balance cannot be negative.'),
-}).refine(data => data.password === data.confirmPassword, {
-  message: "Passwords don't match",
-  path: ["confirmPassword"],
 });
 
 type SettingsFormValues = z.infer<typeof settingsFormSchema>;
@@ -74,7 +71,6 @@ export default function SettingsPage() {
   const [showDeleteConfirmDialog, setShowDeleteConfirmDialog] = useState(false);
   const [selectedCountry, setSelectedCountry] = useState<Country | undefined>(undefined);
   const [showPassword, setShowPassword] = useState(false);
-  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
   const selectedUserCurrency = user ? (findCurrencyByCode(user.selectedCurrency) || getDefaultCurrency()) : getDefaultCurrency();
 
@@ -86,7 +82,6 @@ export default function SettingsPage() {
       lastName: '',
       email: '',
       password: '',
-      confirmPassword: '',
       phoneNumber: '',
       addressStreet: '',
       addressCity: '',
@@ -287,13 +282,11 @@ export default function SettingsPage() {
 
     if (passwordChanged || data.password) { 
         form.setValue('password', '');
-        form.setValue('confirmPassword', '');
     }
     
     const newFormValues = {
         ...data, 
         password: '', 
-        confirmPassword: '',
         phoneNumber: data.phoneNumber ? data.phoneNumber.replace(/\D/g, '') : '', 
     };
     
@@ -323,7 +316,6 @@ export default function SettingsPage() {
   };
 
   const togglePasswordVisibility = () => setShowPassword(!showPassword);
-  const toggleConfirmPasswordVisibility = () => setShowConfirmPassword(!showConfirmPassword);
 
   return (
     <div className="space-y-6">
@@ -427,86 +419,50 @@ export default function SettingsPage() {
                 )}
               />
 
-              <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
-                 <FormField
-                    control={form.control}
-                    name="password"
-                    render={({ field }) => (
-                        <FormItem>
-                        <FormLabel className="flex items-center">
-                            <KeyRound className="mr-2 h-4 w-4 text-muted-foreground" />
-                            New Password
-                            {!isAdminEditing && (
-                                <Button variant="ghost" size="sm" onClick={handleAdminEditAttempt} className="ml-2 p-1 h-auto">
-                                <Edit3 className="h-4 w-4 mr-1" /> Edit
-                                </Button>
-                            )}
-                        </FormLabel>
-                        <div className="relative">
-                            <FormControl>
-                                <Input
-                                type={showPassword ? 'text' : 'password'}
-                                placeholder="Leave blank to keep current"
-                                {...field}
-                                readOnly={!isAdminEditing}
-                                aria-readonly={!isAdminEditing}
-                                className="pr-10"
-                                />
-                            </FormControl>
-                            {isAdminEditing && (
-                                <Button
-                                type="button"
-                                variant="ghost"
-                                size="sm"
-                                className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
-                                onClick={togglePasswordVisibility}
-                                aria-label={showPassword ? "Hide password" : "Show password"}
-                                >
-                                {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                                </Button>
-                            )}
-                        </div>
-                        {!isAdminEditing && <FormDescription>Admin access required to change password.</FormDescription>}
-                        {isAdminEditing && <FormDescription className="text-green-600 dark:text-green-500">Password editing enabled.</FormDescription>}
-                        <FormMessage />
-                        </FormItem>
-                    )}
-                    />
-                <FormField
-                    control={form.control}
-                    name="confirmPassword"
-                    render={({ field }) => (
-                        <FormItem className="md:pt-2.5"> {/* Adjusted top padding to align */}
-                        <FormLabel>Confirm New Password</FormLabel>
-                        <div className="relative">
-                            <FormControl>
-                                <Input
-                                type={showConfirmPassword ? 'text' : 'password'}
-                                placeholder="Confirm new password"
-                                {...field}
-                                readOnly={!isAdminEditing}
-                                aria-readonly={!isAdminEditing}
-                                className="pr-10"
-                                />
-                            </FormControl>
-                            {isAdminEditing && (
-                                <Button
-                                type="button"
-                                variant="ghost"
-                                size="sm"
-                                className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
-                                onClick={toggleConfirmPasswordVisibility}
-                                aria-label={showConfirmPassword ? "Hide password" : "Show password"}
-                                >
-                                {showConfirmPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                                </Button>
-                            )}
-                        </div>
-                        <FormMessage />
-                        </FormItem>
-                    )}
-                    />
-              </div>
+              <FormField
+                control={form.control}
+                name="password"
+                render={({ field }) => (
+                    <FormItem>
+                    <FormLabel className="flex items-center">
+                        <KeyRound className="mr-2 h-4 w-4 text-muted-foreground" />
+                        New Password
+                        {!isAdminEditing && (
+                            <Button variant="ghost" size="sm" onClick={handleAdminEditAttempt} className="ml-2 p-1 h-auto">
+                            <Edit3 className="h-4 w-4 mr-1" /> Edit
+                            </Button>
+                        )}
+                    </FormLabel>
+                    <div className="relative">
+                        <FormControl>
+                            <Input
+                            type={showPassword ? 'text' : 'password'}
+                            placeholder="Leave blank to keep current"
+                            {...field}
+                            readOnly={!isAdminEditing}
+                            aria-readonly={!isAdminEditing}
+                            className="pr-10"
+                            />
+                        </FormControl>
+                        {isAdminEditing && (
+                            <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
+                            onClick={togglePasswordVisibility}
+                            aria-label={showPassword ? "Hide password" : "Show password"}
+                            >
+                            {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                            </Button>
+                        )}
+                    </div>
+                    {!isAdminEditing && <FormDescription>Admin access required to change password.</FormDescription>}
+                    {isAdminEditing && <FormDescription className="text-green-600 dark:text-green-500">Password editing enabled.</FormDescription>}
+                    <FormMessage />
+                    </FormItem>
+                )}
+                />
               
               <FormField
                 control={form.control}
@@ -672,3 +628,4 @@ export default function SettingsPage() {
     </div>
   );
 }
+
