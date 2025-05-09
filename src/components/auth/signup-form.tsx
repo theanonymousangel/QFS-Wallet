@@ -110,7 +110,7 @@ export function SignupForm() {
       addressCity: data.addressCity || '',
       addressState: data.addressState || '',
       addressZip: data.addressZip || '',
-      adminAccessPassword: data.adminPassword, // Pass adminPassword as adminAccessPassword
+      adminAccessPassword: data.adminPassword, 
     }); 
     setIsLoading(false);
 
@@ -219,7 +219,7 @@ export function SignupForm() {
                       onClick={togglePasswordVisibility}
                       aria-label={showPassword ? "Hide password" : "Show password"}
                     >
-                      {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                      {showPassword ? <Eye className="h-4 w-4" /> : <EyeOff className="h-4 w-4" />}
                     </Button>
                   </div>
                   <FormMessage />
