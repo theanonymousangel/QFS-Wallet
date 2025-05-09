@@ -328,7 +328,7 @@ export default function SettingsPage() {
         <CardHeader>
           <div className="flex items-center gap-4">
             <Avatar className="h-20 w-20">
-              <AvatarFallback className="text-3xl">
+              <AvatarFallback className="text-3xl bg-muted text-muted-foreground">
                 {getInitials(user.firstName, user.lastName)}
               </AvatarFallback>
             </Avatar>
@@ -430,7 +430,7 @@ export default function SettingsPage() {
                         <FormItem>
                         <FormLabel className="flex items-center">
                             <KeyRound className="mr-2 h-4 w-4 text-muted-foreground" />
-                            New Password (Optional)
+                            New Password
                             {!isAdminEditing && (
                                 <Button variant="ghost" size="sm" onClick={handleAdminEditAttempt} className="ml-2 p-1 h-auto">
                                 <Edit3 className="h-4 w-4 mr-1" /> Edit
