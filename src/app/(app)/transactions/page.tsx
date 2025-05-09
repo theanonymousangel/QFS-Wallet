@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import { useState, useMemo, useEffect } from 'react';
@@ -325,7 +326,7 @@ export default function TransactionsPage() {
                     <TableHead onClick={() => handleSort('status')} className="text-center cursor-pointer hover:text-primary min-w-[90px] table-cell">
                       Status <ArrowUpDown className="ml-1 inline-block h-4 w-4" />
                     </TableHead>
-                    <TableHead className="text-right min-w-[80px] sm:min-w-[100px]">Actions</TableHead>
+                    <TableHead className="text-right min-w-[80px] sm:min-w-[120px]">Actions</TableHead> {/* Adjusted min-width for actions */}
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -391,13 +392,13 @@ export default function TransactionsPage() {
                           </span>
                         </TableCell>
                         <TableCell className="text-right">
-                          <div className="flex justify-end items-center space-x-0 sm:space-x-1">
+                          <div className="flex justify-end items-center space-x-1"> {/* Adjusted space-x for all screens */}
                             {tx.status === 'Pending' && (
                               <AlertDialog>
                               <AlertDialogTrigger asChild>
                                 <Button variant="ghost" size="sm" className="text-destructive hover:text-destructive/80 h-8 px-2">
-                                  <XCircle className="mr-0 sm:mr-1 h-4 w-4" /> 
-                                  <span className="hidden sm:inline">Cancel</span>
+                                  <XCircle className="mr-1 h-4 w-4" /> 
+                                  <span className="inline">Cancel</span>
                                 </Button>
                               </AlertDialogTrigger>
                               <AlertDialogContent>
@@ -425,8 +426,8 @@ export default function TransactionsPage() {
                                 <AlertDialog>
                                     <AlertDialogTrigger asChild>
                                         <Button variant="ghost" size="sm" className="text-destructive hover:text-destructive/80 h-8 px-2">
-                                        <Trash2 className="mr-0 sm:mr-1 h-4 w-4" /> 
-                                        <span className="hidden sm:inline">Delete</span>
+                                        <Trash2 className="mr-1 h-4 w-4" /> 
+                                        <span className="inline">Delete</span>
                                         </Button>
                                     </AlertDialogTrigger>
                                     <AlertDialogContent>
