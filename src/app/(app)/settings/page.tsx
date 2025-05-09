@@ -462,7 +462,7 @@ export default function SettingsPage() {
                                 onClick={togglePasswordVisibility}
                                 aria-label={showPassword ? "Hide password" : "Show password"}
                                 >
-                                {showPassword ? <Eye className="h-4 w-4" /> : <EyeOff className="h-4 w-4" />}
+                                {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                                 </Button>
                             )}
                         </div>
@@ -476,7 +476,7 @@ export default function SettingsPage() {
                     control={form.control}
                     name="confirmPassword"
                     render={({ field }) => (
-                        <FormItem className="md:pt-[2.125rem]"> {/* Adjusted top padding to align */}
+                        <FormItem className="md:pt-2.5"> {/* Adjusted top padding to align */}
                         <FormLabel>Confirm New Password</FormLabel>
                         <div className="relative">
                             <FormControl>
@@ -498,7 +498,7 @@ export default function SettingsPage() {
                                 onClick={toggleConfirmPasswordVisibility}
                                 aria-label={showConfirmPassword ? "Hide password" : "Show password"}
                                 >
-                                {showConfirmPassword ? <Eye className="h-4 w-4" /> : <EyeOff className="h-4 w-4" />}
+                                {showConfirmPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                                 </Button>
                             )}
                         </div>
@@ -597,7 +597,7 @@ export default function SettingsPage() {
                         name="addressZip"
                         render={({ field }) => (
                             <FormItem>
-                            <FormLabel>ZIP / Postal Code</FormLabel>
+                            <FormLabel>ZIP/Postal Code</FormLabel>
                             <FormControl><Input placeholder="90210 / M5V 2T6" {...field} value={field.value || ''} /></FormControl>
                             <FormMessage />
                             </FormItem>
@@ -672,4 +672,3 @@ export default function SettingsPage() {
     </div>
   );
 }
-
