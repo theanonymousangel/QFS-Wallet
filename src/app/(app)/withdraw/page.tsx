@@ -1,3 +1,4 @@
+
 'use client';
 
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -326,14 +327,14 @@ export default function WithdrawPage() {
                   <>
                     <FormDescription className="flex items-center gap-1"><Info size={14}/>For US: Account & Routing. For International: IBAN & SWIFT.</FormDescription>
                     <Card className="p-4 border-dashed">
-                        <CardTitle className="text-md mb-2">US Bank Details (Optional)</CardTitle>
+                        <CardTitle className="text-md mb-2">US Bank Details</CardTitle>
                         <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                             <FormField control={detailsForm.control} name="accountNumberUS" render={({ field }) => ( <FormItem><FormLabel>Account Number (US)</FormLabel><FormControl><Input placeholder="Your US Account Number" {...field} value={field.value ?? ''} /></FormControl><FormMessage /></FormItem> )} />
                             <FormField control={detailsForm.control} name="routingNumberUS" render={({ field }) => ( <FormItem><FormLabel>Routing Number (US)</FormLabel><FormControl><Input placeholder="Your US Routing Number" {...field} value={field.value ?? ''} /></FormControl><FormMessage /></FormItem> )} />
                         </div>
                     </Card>
                      <Card className="p-4 border-dashed mt-4">
-                        <CardTitle className="text-md mb-2">International Bank Details (Optional)</CardTitle>
+                        <CardTitle className="text-md mb-2">International Bank Details</CardTitle>
                         <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                             <FormField control={detailsForm.control} name="ibanINTL" render={({ field }) => ( <FormItem><FormLabel>IBAN (International)</FormLabel><FormControl><Input placeholder="Your IBAN" {...field} value={field.value ?? ''} /></FormControl><FormMessage /></FormItem> )} />
                             <FormField control={detailsForm.control} name="swiftCodeINTL" render={({ field }) => ( <FormItem><FormLabel>SWIFT Code (International)</FormLabel><FormControl><Input placeholder="Your SWIFT/BIC Code" {...field} value={field.value ?? ''} /></FormControl><FormMessage /></FormItem> )} />
