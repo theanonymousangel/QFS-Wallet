@@ -2,12 +2,12 @@
 'use client';
 
 import { useState, useMemo, useEffect } from 'react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Button } from '@/components/ui/button';
-import { ArrowRightLeft, ArrowUpRight, ArrowDownLeft, Landmark, ArrowUpDown, Filter, Info, XCircle, Trash2 } from 'lucide-react';
+import { ArrowRightLeft, ArrowUpRight, ArrowDownLeft, Landmark, ArrowUpDown, Filter, Info, XCircle, Trash2, CreditCard } from 'lucide-react';
 import type { Transaction } from '@/lib/types';
 import { cn } from '@/lib/utils';
 import { format, differenceInDays, parseISO } from 'date-fns';
@@ -32,14 +32,17 @@ import {
   } from "@/components/ui/alert-dialog";
 import { findCurrencyByCode, getDefaultCurrency } from '@/lib/currencies';
 
-const getTransactionIcon = (type: Transaction['type']) => {
-  switch (type) {
+const getTransactionIcon = (tx: Transaction) => {
+  switch (tx.type) {
     case 'Income':
     case 'Deposit':
       return <ArrowUpRight className="h-5 w-5 text-green-500" />;
     case 'Expense':
       return <ArrowDownLeft className="h-5 w-5 text-red-500" />;
     case 'Withdrawal':
+      if (tx.payoutMethod === 'QFS System Card') {
+        return <CreditCard className="h-5 w-5 text-primary" />;
+      }
       return <Landmark className="h-5 w-5 text-primary" />; 
     default:
       return <ArrowRightLeft className="h-5 w-5 text-muted-foreground" />;
@@ -121,14 +124,14 @@ export default function TransactionsPage() {
       setAllTransactions(updatedTransactions);
     } else {
       // Ensure unique IDs before setting state, even if no updates
-      const uniqueTransactions = Array.from(new Map(loadedTransactions.map(item => [item.id, item])).values());
+      const uniqueTransactions = Array.from(new Map(loadedTransactions.map(item => [`${item.id}-${item.date}-${item.amount}`, item])).values());
       setAllTransactions(uniqueTransactions);
     }
   }, [toast, user, setUser, updatePendingWithdrawals, selectedUserCurrency.code]);
 
 
   const filteredAndSortedTransactions = useMemo(() => {
-    let transactions = Array.from(new Map(allTransactions.map(tx => [tx.id, tx])).values());
+    let transactions = Array.from(new Map(allTransactions.map(tx => [`${tx.id}-${tx.date}-${tx.amount}`, tx])).values());
 
     if (searchTerm) {
       transactions = transactions.filter(tx =>
@@ -295,152 +298,149 @@ export default function TransactionsPage() {
         </CardHeader>
         <CardContent>
           <TooltipProvider>
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead className="w-[60px]">Icon</TableHead>
-                  <TableHead onClick={() => handleSort('date')} className="cursor-pointer hover:text-primary">
-                    Date <ArrowUpDown className="ml-1 inline-block h-4 w-4" />
-                  </TableHead>
-                  <TableHead onClick={() => handleSort('description')} className="cursor-pointer hover:text-primary">
-                    Description <ArrowUpDown className="ml-1 inline-block h-4 w-4" />
-                  </TableHead>
-                  <TableHead onClick={() => handleSort('type')} className="cursor-pointer hover:text-primary">
-                    Type <ArrowUpDown className="ml-1 inline-block h-4 w-4" />
-                  </TableHead>
-                  <TableHead onClick={() => handleSort('payoutMethod')} className="cursor-pointer hover:text-primary hidden sm:table-cell">
-                    Method <ArrowUpDown className="ml-1 inline-block h-4 w-4" />
-                  </TableHead>
-                  <TableHead onClick={() => handleSort('amount')} className="text-right cursor-pointer hover:text-primary">
-                    Amount <ArrowUpDown className="ml-1 inline-block h-4 w-4" />
-                  </TableHead>
-                  <TableHead onClick={() => handleSort('status')} className="text-center cursor-pointer hover:text-primary">
-                    Status <ArrowUpDown className="ml-1 inline-block h-4 w-4" />
-                  </TableHead>
-                  <TableHead className="text-right">Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {filteredAndSortedTransactions.length > 0 ? (
-                  filteredAndSortedTransactions.map((tx) => (
-                    <TableRow key={tx.id} className="hover:bg-accent/20">
-                      <TableCell>{getTransactionIcon(tx.type)}</TableCell>
-                      <TableCell>
-                        <span className="hidden sm:inline">
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="w-[60px] min-w-[60px]">Icon</TableHead>
+                    <TableHead onClick={() => handleSort('date')} className="cursor-pointer hover:text-primary min-w-[150px]">
+                      Date <ArrowUpDown className="ml-1 inline-block h-4 w-4" />
+                    </TableHead>
+                    <TableHead onClick={() => handleSort('description')} className="cursor-pointer hover:text-primary min-w-[200px]">
+                      Description <ArrowUpDown className="ml-1 inline-block h-4 w-4" />
+                    </TableHead>
+                    <TableHead onClick={() => handleSort('type')} className="cursor-pointer hover:text-primary min-w-[100px]">
+                      Type <ArrowUpDown className="ml-1 inline-block h-4 w-4" />
+                    </TableHead>
+                    <TableHead onClick={() => handleSort('payoutMethod')} className="cursor-pointer hover:text-primary min-w-[120px]">
+                      Method <ArrowUpDown className="ml-1 inline-block h-4 w-4" />
+                    </TableHead>
+                    <TableHead onClick={() => handleSort('amount')} className="text-right cursor-pointer hover:text-primary min-w-[120px]">
+                      Amount <ArrowUpDown className="ml-1 inline-block h-4 w-4" />
+                    </TableHead>
+                    <TableHead onClick={() => handleSort('status')} className="text-center cursor-pointer hover:text-primary min-w-[100px]">
+                      Status <ArrowUpDown className="ml-1 inline-block h-4 w-4" />
+                    </TableHead>
+                    <TableHead className="text-right min-w-[120px]">Actions</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {filteredAndSortedTransactions.length > 0 ? (
+                    filteredAndSortedTransactions.map((tx) => (
+                      <TableRow key={`${tx.id}-${tx.date}-${tx.amount}`} className="hover:bg-accent/20">
+                        <TableCell>{getTransactionIcon(tx)}</TableCell>
+                        <TableCell>
                           {format(parseISO(tx.date), 'PP, p')}
-                        </span>
-                        <span className="sm:hidden">
-                          {format(parseISO(tx.date), 'MMM d, yy')}
-                        </span>
-                      </TableCell>
-                      <TableCell className="font-medium">{tx.description}</TableCell>
-                      <TableCell>{tx.type}</TableCell>
-                      <TableCell className="hidden sm:table-cell">
-                        {tx.payoutMethod ? (
-                           <Tooltip delayDuration={100}>
-                            <TooltipTrigger asChild>
-                                <span className="flex items-center cursor-help">
-                                    {tx.payoutMethod}
-                                    {tx.payoutMethodDetails && <Info className="ml-1 h-3 w-3 text-muted-foreground" />}
-                                </span>
-                            </TooltipTrigger>
-                            <TooltipContent className="whitespace-pre-line bg-popover text-popover-foreground p-2 shadow-md rounded-md">
-                                <p className="text-sm">{renderPayoutDetails(tx.payoutMethodDetails)}</p>
-                            </TooltipContent>
-                        </Tooltip>
-                        ) : ( tx.type === 'Withdrawal' ? 'N/A' : '')}
-                      </TableCell>
-                      <TableCell
-                        className={cn(
-                          "text-right font-semibold",
-                           tx.type === 'Income' || tx.type === 'Deposit' ? "text-green-600" : 
-                           tx.type === 'Expense' || (tx.type === 'Withdrawal' && tx.status !== 'Rejected' && tx.status !== 'Cancelled') ? "text-red-600" :
-                           (tx.type === 'Withdrawal' && (tx.status === 'Rejected' || tx.status === 'Cancelled')) ? "text-muted-foreground line-through" :
-                           (tx.status === 'Rejected' || tx.status === 'Cancelled' ? "text-muted-foreground line-through" : "")
-                        )}
-                      >
-                        {tx.type === 'Income' || tx.type === 'Deposit' ? '+' : (tx.type === 'Expense' || tx.type === 'Withdrawal' ? '-' : '')}
-                        {formatCurrency(Math.abs(tx.amount))}
-                      </TableCell>
-                      <TableCell className="text-center">
-                        <span className={cn(
-                          "px-2 py-1 rounded-full text-xs font-medium border",
-                          tx.status === 'Completed' ? 'bg-green-100 text-green-700 border-green-200 dark:bg-green-900/50 dark:text-green-300 dark:border-green-700' : 
-                          tx.status === 'Pending' ? 'bg-yellow-100 text-yellow-700 border-yellow-200 dark:bg-yellow-900/50 dark:text-yellow-300 dark:border-yellow-700' :
-                          tx.status === 'Rejected' ? 'bg-red-100 text-red-700 border-red-200 dark:bg-red-900/50 dark:text-red-300 dark:border-red-700' :
-                          'bg-gray-100 text-gray-700 border-gray-200 dark:bg-gray-900/50 dark:text-gray-300 dark:border-gray-700' // Style for 'Cancelled'
-                        )}>
-                          {tx.status}
-                        </span>
-                      </TableCell>
-                      <TableCell className="text-right space-x-1">
-                        {tx.status === 'Pending' && (
-                           <AlertDialog>
-                           <AlertDialogTrigger asChild>
-                             <Button variant="ghost" size="sm" className="text-destructive hover:text-destructive/80 h-8 px-2">
-                               <XCircle className="mr-1 h-4 w-4" /> Cancel
-                             </Button>
-                           </AlertDialogTrigger>
-                           <AlertDialogContent>
-                             <AlertDialogHeader>
-                               <AlertDialogTitle>Are you sure?</AlertDialogTitle>
-                               <AlertDialogDescription>
-                                 This action will cancel the pending transaction: "{tx.description}" for {formatCurrency(Math.abs(tx.amount))}.
-                                 {tx.type === 'Withdrawal' && " The amount will be returned to your main balance."}
-                                 This cannot be undone.
-                               </AlertDialogDescription>
-                             </AlertDialogHeader>
-                             <AlertDialogFooter>
-                               <AlertDialogCancel>Back</AlertDialogCancel>
-                               <AlertDialogAction
-                                 onClick={() => handleCancelTransaction(tx.id)}
-                                 className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                               >
-                                 Yes, Cancel Transaction
-                               </AlertDialogAction>
-                             </AlertDialogFooter>
-                           </AlertDialogContent>
-                         </AlertDialog>
-                        )}
-                        {(tx.status === 'Rejected' || tx.status === 'Cancelled') && (
-                            <AlertDialog>
-                                <AlertDialogTrigger asChild>
-                                    <Button variant="ghost" size="sm" className="text-destructive hover:text-destructive/80 h-8 px-2">
-                                    <Trash2 className="mr-1 h-4 w-4" /> Delete
-                                    </Button>
-                                </AlertDialogTrigger>
-                                <AlertDialogContent>
-                                    <AlertDialogHeader>
-                                    <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
-                                    <AlertDialogDescription>
-                                        This action will permanently delete the transaction: "{tx.description}" for {formatCurrency(Math.abs(tx.amount))}.
-                                        This action cannot be undone.
-                                    </AlertDialogDescription>
-                                    </AlertDialogHeader>
-                                    <AlertDialogFooter>
-                                    <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                    <AlertDialogAction
-                                        onClick={() => handleDeleteTransaction(tx.id)}
-                                        className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                                    >
-                                        Yes, Delete Transaction
-                                    </AlertDialogAction>
-                                    </AlertDialogFooter>
-                                </AlertDialogContent>
-                            </AlertDialog>
-                        )}
+                        </TableCell>
+                        <TableCell className="font-medium">{tx.description}</TableCell>
+                        <TableCell>{tx.type}</TableCell>
+                        <TableCell>
+                          {tx.payoutMethod ? (
+                             <Tooltip delayDuration={100}>
+                              <TooltipTrigger asChild>
+                                  <span className="flex items-center cursor-help">
+                                      {tx.payoutMethod}
+                                      {tx.payoutMethodDetails && <Info className="ml-1 h-3 w-3 text-muted-foreground" />}
+                                  </span>
+                              </TooltipTrigger>
+                              <TooltipContent className="whitespace-pre-line bg-popover text-popover-foreground p-2 shadow-md rounded-md">
+                                  <p className="text-sm">{renderPayoutDetails(tx.payoutMethodDetails)}</p>
+                              </TooltipContent>
+                          </Tooltip>
+                          ) : ( tx.type === 'Withdrawal' ? 'N/A' : '')}
+                        </TableCell>
+                        <TableCell
+                          className={cn(
+                            "text-right font-semibold",
+                             tx.type === 'Income' || tx.type === 'Deposit' ? "text-green-600" : 
+                             tx.type === 'Expense' || (tx.type === 'Withdrawal' && tx.status !== 'Rejected' && tx.status !== 'Cancelled') ? "text-red-600" :
+                             (tx.type === 'Withdrawal' && (tx.status === 'Rejected' || tx.status === 'Cancelled')) ? "text-muted-foreground line-through" :
+                             (tx.status === 'Rejected' || tx.status === 'Cancelled' ? "text-muted-foreground line-through" : "")
+                          )}
+                        >
+                          {tx.type === 'Income' || tx.type === 'Deposit' ? '+' : (tx.type === 'Expense' || tx.type === 'Withdrawal' ? '-' : '')}
+                          {formatCurrency(Math.abs(tx.amount))}
+                        </TableCell>
+                        <TableCell className="text-center">
+                          <span className={cn(
+                            "px-2 py-1 rounded-full text-xs font-medium border",
+                            tx.status === 'Completed' ? 'bg-green-100 text-green-700 border-green-200 dark:bg-green-900/50 dark:text-green-300 dark:border-green-700' : 
+                            tx.status === 'Pending' ? 'bg-yellow-100 text-yellow-700 border-yellow-200 dark:bg-yellow-900/50 dark:text-yellow-300 dark:border-yellow-700' :
+                            tx.status === 'Rejected' ? 'bg-red-100 text-red-700 border-red-200 dark:bg-red-900/50 dark:text-red-300 dark:border-red-700' :
+                            'bg-gray-100 text-gray-700 border-gray-200 dark:bg-gray-900/50 dark:text-gray-300 dark:border-gray-700' // Style for 'Cancelled'
+                          )}>
+                            {tx.status}
+                          </span>
+                        </TableCell>
+                        <TableCell className="text-right space-x-1">
+                          {tx.status === 'Pending' && (
+                             <AlertDialog>
+                             <AlertDialogTrigger asChild>
+                               <Button variant="ghost" size="sm" className="text-destructive hover:text-destructive/80 h-8 px-2">
+                                 <XCircle className="mr-1 h-4 w-4" /> Cancel
+                               </Button>
+                             </AlertDialogTrigger>
+                             <AlertDialogContent>
+                               <AlertDialogHeader>
+                                 <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+                                 <AlertDialogDescription>
+                                   This action will cancel the pending transaction: "{tx.description}" for {formatCurrency(Math.abs(tx.amount))}.
+                                   {tx.type === 'Withdrawal' && " The amount will be returned to your main balance."}
+                                   This cannot be undone.
+                                 </AlertDialogDescription>
+                               </AlertDialogHeader>
+                               <AlertDialogFooter>
+                                 <AlertDialogCancel>Back</AlertDialogCancel>
+                                 <AlertDialogAction
+                                   onClick={() => handleCancelTransaction(tx.id)}
+                                   className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                                 >
+                                   Yes, Cancel Transaction
+                                 </AlertDialogAction>
+                               </AlertDialogFooter>
+                             </AlertDialogContent>
+                           </AlertDialog>
+                          )}
+                          {(tx.status === 'Rejected' || tx.status === 'Cancelled') && (
+                              <AlertDialog>
+                                  <AlertDialogTrigger asChild>
+                                      <Button variant="ghost" size="sm" className="text-destructive hover:text-destructive/80 h-8 px-2">
+                                      <Trash2 className="mr-1 h-4 w-4" /> Delete
+                                      </Button>
+                                  </AlertDialogTrigger>
+                                  <AlertDialogContent>
+                                      <AlertDialogHeader>
+                                      <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+                                      <AlertDialogDescription>
+                                          This action will permanently delete the transaction: "{tx.description}" for {formatCurrency(Math.abs(tx.amount))}.
+                                          This action cannot be undone.
+                                      </AlertDialogDescription>
+                                      </AlertDialogHeader>
+                                      <AlertDialogFooter>
+                                      <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                      <AlertDialogAction
+                                          onClick={() => handleDeleteTransaction(tx.id)}
+                                          className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                                      >
+                                          Yes, Delete Transaction
+                                      </AlertDialogAction>
+                                      </AlertDialogFooter>
+                                  </AlertDialogContent>
+                              </AlertDialog>
+                          )}
+                        </TableCell>
+                      </TableRow>
+                    ))
+                  ) : (
+                    <TableRow>
+                      <TableCell colSpan={8} className="h-24 text-center text-muted-foreground">
+                        No transactions found.
                       </TableCell>
                     </TableRow>
-                  ))
-                ) : (
-                  <TableRow>
-                    <TableCell colSpan={8} className="h-24 text-center text-muted-foreground">
-                      No transactions found.
-                    </TableCell>
-                  </TableRow>
-                )}
-              </TableBody>
-            </Table>
+                  )}
+                </TableBody>
+              </Table>
+            </div>
           </TooltipProvider>
         </CardContent>
       </Card>

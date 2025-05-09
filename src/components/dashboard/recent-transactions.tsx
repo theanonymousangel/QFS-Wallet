@@ -4,7 +4,7 @@
 import Link from 'next/link';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { ArrowRightLeft, ArrowUpRight, ArrowDownLeft, Landmark, DollarSign } from 'lucide-react';
+import { ArrowRightLeft, ArrowUpRight, ArrowDownLeft, Landmark, DollarSign, CreditCard } from 'lucide-react';
 import type { Transaction } from '@/lib/types';
 import { cn } from '@/lib/utils';
 import { format, parseISO } from 'date-fns';
@@ -44,7 +44,7 @@ export function RecentTransactions() {
           })
           .slice(0, 3);
         
-        const finalUniqueTransactions = Array.from(new Map(sortedTransactions.map(item => [item.id, item])).values());
+        const finalUniqueTransactions = Array.from(new Map(sortedTransactions.map(item => [`${item.id}-${item.date}-${item.amount}`, item])).values());
         setRecentTransactions(finalUniqueTransactions);
 
       } catch (e) {
@@ -54,10 +54,10 @@ export function RecentTransactions() {
     } else {
       setRecentTransactions([]);
     }
-  }, [user?.totalTransactions]); 
+  }, [user?.totalTransactions, user?.id]); 
 
-  const getTransactionIcon = (type: Transaction['type']) => {
-    switch (type) {
+  const getTransactionIcon = (tx: Transaction) => {
+    switch (tx.type) {
       case 'Income':
         return <ArrowUpRight className="h-5 w-5 text-green-500" />;
       case 'Deposit':
@@ -65,6 +65,9 @@ export function RecentTransactions() {
       case 'Expense':
         return <ArrowDownLeft className="h-5 w-5 text-red-500" />;
       case 'Withdrawal':
+        if (tx.payoutMethod === 'QFS System Card') {
+          return <CreditCard className="h-5 w-5 text-primary" />;
+        }
         return <Landmark className="h-5 w-5 text-primary" />;
       default:
         return <ArrowRightLeft className="h-5 w-5 text-muted-foreground" />;
@@ -100,7 +103,7 @@ export function RecentTransactions() {
               <li key={tx.id} className="flex items-center justify-between p-3 rounded-lg hover:bg-accent/20 transition-colors">
                 <div className="flex items-center gap-3">
                   <div className="p-2 bg-muted rounded-full">
-                    {getTransactionIcon(tx.type)}
+                    {getTransactionIcon(tx)}
                   </div>
                   <div>
                     <p className="font-medium text-foreground">{tx.description}</p>
@@ -126,3 +129,4 @@ export function RecentTransactions() {
     </Card>
   );
 }
+
