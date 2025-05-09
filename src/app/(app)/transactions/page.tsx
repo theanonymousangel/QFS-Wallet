@@ -322,10 +322,10 @@ export default function TransactionsPage() {
                     <TableHead onClick={() => handleSort('amount')} className="text-right cursor-pointer hover:text-primary min-w-[100px] sm:min-w-[120px]">
                       Amount <ArrowUpDown className="ml-1 inline-block h-4 w-4" />
                     </TableHead>
-                    <TableHead onClick={() => handleSort('status')} className="text-center cursor-pointer hover:text-primary min-w-[100px] hidden sm:table-cell">
+                    <TableHead onClick={() => handleSort('status')} className="text-center cursor-pointer hover:text-primary min-w-[90px] table-cell">
                       Status <ArrowUpDown className="ml-1 inline-block h-4 w-4" />
                     </TableHead>
-                    <TableHead className="text-right min-w-[100px] sm:min-w-[120px]">Actions</TableHead>
+                    <TableHead className="text-right min-w-[80px] sm:min-w-[100px]">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -337,23 +337,20 @@ export default function TransactionsPage() {
                           <div className="flex flex-col">
                             <span>{format(parseISO(tx.date), 'PP')}</span>
                             <span className="text-xs text-muted-foreground">{format(parseISO(tx.date), 'p')}</span>
-                             {/* Mobile only status and type */}
-                             <div className="sm:hidden mt-1">
-                                <span className={cn(
-                                    "px-2 py-0.5 rounded-full text-xs font-medium border text-center block mb-1",
-                                    tx.status === 'Completed' ? 'bg-green-100 text-green-700 border-green-200 dark:bg-green-900/50 dark:text-green-300 dark:border-green-700' : 
-                                    tx.status === 'Pending' ? 'bg-yellow-100 text-yellow-700 border-yellow-200 dark:bg-yellow-900/50 dark:text-yellow-300 dark:border-yellow-700' :
-                                    tx.status === 'Rejected' ? 'bg-red-100 text-red-700 border-red-200 dark:bg-red-900/50 dark:text-red-300 dark:border-red-700' :
-                                    'bg-gray-100 text-gray-700 border-gray-200 dark:bg-gray-900/50 dark:text-gray-300 dark:border-gray-700'
-                                  )}>
-                                    {tx.status === 'Pending' ? 'Processing' : tx.status}
-                                  </span>
-                                <span className="text-xs text-muted-foreground">{tx.type}</span>
-                                {tx.payoutMethod && <span className="text-xs text-muted-foreground lg:hidden"> via {tx.payoutMethod}</span>}
-                             </div>
                           </div>
                         </TableCell>
-                        <TableCell className="font-medium">{tx.description}</TableCell>
+                        <TableCell className="font-medium">
+                          {tx.description}
+                           {/* Mobile/Tablet specific info for Type and Method */}
+                            <div className="mt-1">
+                                <span className="text-xs text-muted-foreground md:hidden block">Type: {tx.type}</span>
+                                {tx.payoutMethod && (
+                                <span className="text-xs text-muted-foreground lg:hidden block">
+                                    Method: {tx.payoutMethod}
+                                </span>
+                                )}
+                            </div>
+                        </TableCell>
                         <TableCell className="hidden md:table-cell">{tx.type}</TableCell>
                         <TableCell className="hidden lg:table-cell">
                           {tx.payoutMethod ? (
@@ -382,7 +379,7 @@ export default function TransactionsPage() {
                           {tx.type === 'Income' || tx.type === 'Deposit' ? '+' : (tx.type === 'Expense' || tx.type === 'Withdrawal' ? '-' : '')}
                           {formatCurrency(Math.abs(tx.amount))}
                         </TableCell>
-                        <TableCell className="text-center hidden sm:table-cell">
+                        <TableCell className="text-center table-cell">
                           <span className={cn(
                             "px-2 py-1 rounded-full text-xs font-medium border",
                             tx.status === 'Completed' ? 'bg-green-100 text-green-700 border-green-200 dark:bg-green-900/50 dark:text-green-300 dark:border-green-700' : 
@@ -393,64 +390,66 @@ export default function TransactionsPage() {
                             {tx.status === 'Pending' ? 'Processing' : tx.status}
                           </span>
                         </TableCell>
-                        <TableCell className="text-right space-x-0 sm:space-x-1">
-                          {tx.status === 'Pending' && (
-                             <AlertDialog>
-                             <AlertDialogTrigger asChild>
-                               <Button variant="ghost" size="sm" className="text-destructive hover:text-destructive/80 h-8 px-2">
-                                 <XCircle className="mr-0 sm:mr-1 h-4 w-4" /> 
-                                 <span className="hidden sm:inline">Cancel</span>
-                               </Button>
-                             </AlertDialogTrigger>
-                             <AlertDialogContent>
-                               <AlertDialogHeader>
-                                 <AlertDialogTitle>Are you sure?</AlertDialogTitle>
-                                 <AlertDialogDescription>
-                                   This action will cancel the pending transaction: "{tx.description}" for {formatCurrency(Math.abs(tx.amount))}.
-                                   {tx.type === 'Withdrawal' && " The amount will be returned to your main balance."}
-                                   This cannot be undone.
-                                 </AlertDialogDescription>
-                               </AlertDialogHeader>
-                               <AlertDialogFooter>
-                                 <AlertDialogCancel>Back</AlertDialogCancel>
-                                 <AlertDialogAction
-                                   onClick={() => handleCancelTransaction(tx.id)}
-                                   className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                                 >
-                                   Yes, Cancel Transaction
-                                 </AlertDialogAction>
-                               </AlertDialogFooter>
-                             </AlertDialogContent>
-                           </AlertDialog>
-                          )}
-                          {(tx.status === 'Rejected' || tx.status === 'Cancelled') && (
+                        <TableCell className="text-right">
+                          <div className="flex justify-end items-center space-x-0 sm:space-x-1">
+                            {tx.status === 'Pending' && (
                               <AlertDialog>
-                                  <AlertDialogTrigger asChild>
-                                      <Button variant="ghost" size="sm" className="text-destructive hover:text-destructive/80 h-8 px-2">
-                                      <Trash2 className="mr-0 sm:mr-1 h-4 w-4" /> 
-                                      <span className="hidden sm:inline">Delete</span>
-                                      </Button>
-                                  </AlertDialogTrigger>
-                                  <AlertDialogContent>
-                                      <AlertDialogHeader>
-                                      <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
-                                      <AlertDialogDescription>
-                                          This action will permanently delete the transaction: "{tx.description}" for {formatCurrency(Math.abs(tx.amount))}.
-                                          This action cannot be undone.
-                                      </AlertDialogDescription>
-                                      </AlertDialogHeader>
-                                      <AlertDialogFooter>
-                                      <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                      <AlertDialogAction
-                                          onClick={() => handleDeleteTransaction(tx.id)}
-                                          className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                                      >
-                                          Yes, Delete Transaction
-                                      </AlertDialogAction>
-                                      </AlertDialogFooter>
-                                  </AlertDialogContent>
-                              </AlertDialog>
-                          )}
+                              <AlertDialogTrigger asChild>
+                                <Button variant="ghost" size="sm" className="text-destructive hover:text-destructive/80 h-8 px-2">
+                                  <XCircle className="mr-0 sm:mr-1 h-4 w-4" /> 
+                                  <span className="hidden sm:inline">Cancel</span>
+                                </Button>
+                              </AlertDialogTrigger>
+                              <AlertDialogContent>
+                                <AlertDialogHeader>
+                                  <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+                                  <AlertDialogDescription>
+                                    This action will cancel the pending transaction: "{tx.description}" for {formatCurrency(Math.abs(tx.amount))}.
+                                    {tx.type === 'Withdrawal' && " The amount will be returned to your main balance."}
+                                    This cannot be undone.
+                                  </AlertDialogDescription>
+                                </AlertDialogHeader>
+                                <AlertDialogFooter>
+                                  <AlertDialogCancel>Back</AlertDialogCancel>
+                                  <AlertDialogAction
+                                    onClick={() => handleCancelTransaction(tx.id)}
+                                    className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                                  >
+                                    Yes, Cancel Transaction
+                                  </AlertDialogAction>
+                                </AlertDialogFooter>
+                              </AlertDialogContent>
+                            </AlertDialog>
+                            )}
+                            {(tx.status === 'Rejected' || tx.status === 'Cancelled') && (
+                                <AlertDialog>
+                                    <AlertDialogTrigger asChild>
+                                        <Button variant="ghost" size="sm" className="text-destructive hover:text-destructive/80 h-8 px-2">
+                                        <Trash2 className="mr-0 sm:mr-1 h-4 w-4" /> 
+                                        <span className="hidden sm:inline">Delete</span>
+                                        </Button>
+                                    </AlertDialogTrigger>
+                                    <AlertDialogContent>
+                                        <AlertDialogHeader>
+                                        <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+                                        <AlertDialogDescription>
+                                            This action will permanently delete the transaction: "{tx.description}" for {formatCurrency(Math.abs(tx.amount))}.
+                                            This action cannot be undone.
+                                        </AlertDialogDescription>
+                                        </AlertDialogHeader>
+                                        <AlertDialogFooter>
+                                        <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                        <AlertDialogAction
+                                            onClick={() => handleDeleteTransaction(tx.id)}
+                                            className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                                        >
+                                            Yes, Delete Transaction
+                                        </AlertDialogAction>
+                                        </AlertDialogFooter>
+                                    </AlertDialogContent>
+                                </AlertDialog>
+                            )}
+                          </div>
                         </TableCell>
                       </TableRow>
                     ))
@@ -471,3 +470,5 @@ export default function TransactionsPage() {
   );
 }
 
+
+    
