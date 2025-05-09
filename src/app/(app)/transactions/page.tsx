@@ -2,7 +2,7 @@
 'use client';
 
 import { useState, useMemo, useEffect } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -131,7 +131,7 @@ export default function TransactionsPage() {
 
 
   const filteredAndSortedTransactions = useMemo(() => {
-    let transactions = Array.from(new Map(allTransactions.map(tx => [`${tx.id}-${item.date}-${item.amount}`, tx])).values());
+    let transactions = Array.from(new Map(allTransactions.map(tx => [`${tx.id}-${tx.date}-${tx.amount}`, tx])).values());
 
     if (searchTerm) {
       transactions = transactions.filter(tx =>
@@ -276,13 +276,16 @@ export default function TransactionsPage() {
       <Card className="shadow-lg">
         <CardHeader>
           <CardTitle>All Transactions</CardTitle>
+          <CardDescription>
+            Review your complete financial activity.
+          </CardDescription>
           
           <div className="mt-4 flex flex-col gap-4 sm:flex-row sm:items-center">
             <Input
               placeholder="Search descriptions, methods..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="max-w-xs"
+              className="max-w-xs w-full sm:w-auto"
             />
             <Select value={filterType} onValueChange={(value: Transaction['type'] | 'all') => setFilterType(value)}>
               <SelectTrigger className="w-full sm:w-[180px]">
@@ -303,39 +306,56 @@ export default function TransactionsPage() {
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead className="w-[60px] min-w-[60px]">Icon</TableHead>
+                    <TableHead className="w-[60px] min-w-[60px] hidden sm:table-cell">Icon</TableHead>
                     <TableHead onClick={() => handleSort('date')} className="cursor-pointer hover:text-primary min-w-[150px]">
                       Date <ArrowUpDown className="ml-1 inline-block h-4 w-4" />
                     </TableHead>
-                    <TableHead onClick={() => handleSort('description')} className="cursor-pointer hover:text-primary min-w-[200px]">
+                    <TableHead onClick={() => handleSort('description')} className="cursor-pointer hover:text-primary min-w-[150px] sm:min-w-[200px]">
                       Description <ArrowUpDown className="ml-1 inline-block h-4 w-4" />
                     </TableHead>
-                    <TableHead onClick={() => handleSort('type')} className="cursor-pointer hover:text-primary min-w-[100px]">
+                    <TableHead onClick={() => handleSort('type')} className="cursor-pointer hover:text-primary min-w-[100px] hidden md:table-cell">
                       Type <ArrowUpDown className="ml-1 inline-block h-4 w-4" />
                     </TableHead>
-                    <TableHead onClick={() => handleSort('payoutMethod')} className="cursor-pointer hover:text-primary min-w-[120px]">
+                    <TableHead onClick={() => handleSort('payoutMethod')} className="cursor-pointer hover:text-primary min-w-[120px] hidden lg:table-cell">
                       Method <ArrowUpDown className="ml-1 inline-block h-4 w-4" />
                     </TableHead>
-                    <TableHead onClick={() => handleSort('amount')} className="text-right cursor-pointer hover:text-primary min-w-[120px]">
+                    <TableHead onClick={() => handleSort('amount')} className="text-right cursor-pointer hover:text-primary min-w-[100px] sm:min-w-[120px]">
                       Amount <ArrowUpDown className="ml-1 inline-block h-4 w-4" />
                     </TableHead>
-                    <TableHead onClick={() => handleSort('status')} className="text-center cursor-pointer hover:text-primary min-w-[100px]">
+                    <TableHead onClick={() => handleSort('status')} className="text-center cursor-pointer hover:text-primary min-w-[100px] hidden sm:table-cell">
                       Status <ArrowUpDown className="ml-1 inline-block h-4 w-4" />
                     </TableHead>
-                    <TableHead className="text-right min-w-[120px]">Actions</TableHead>
+                    <TableHead className="text-right min-w-[100px] sm:min-w-[120px]">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {filteredAndSortedTransactions.length > 0 ? (
                     filteredAndSortedTransactions.map((tx) => (
                       <TableRow key={`${tx.id}-${tx.date}-${tx.amount}`} className="hover:bg-accent/20">
-                        <TableCell>{getTransactionIcon(tx)}</TableCell>
+                        <TableCell className="hidden sm:table-cell">{getTransactionIcon(tx)}</TableCell>
                         <TableCell>
-                          {format(parseISO(tx.date), 'PP, p')}
+                          <div className="flex flex-col">
+                            <span>{format(parseISO(tx.date), 'PP')}</span>
+                            <span className="text-xs text-muted-foreground">{format(parseISO(tx.date), 'p')}</span>
+                             {/* Mobile only status and type */}
+                             <div className="sm:hidden mt-1">
+                                <span className={cn(
+                                    "px-2 py-0.5 rounded-full text-xs font-medium border text-center block mb-1",
+                                    tx.status === 'Completed' ? 'bg-green-100 text-green-700 border-green-200 dark:bg-green-900/50 dark:text-green-300 dark:border-green-700' : 
+                                    tx.status === 'Pending' ? 'bg-yellow-100 text-yellow-700 border-yellow-200 dark:bg-yellow-900/50 dark:text-yellow-300 dark:border-yellow-700' :
+                                    tx.status === 'Rejected' ? 'bg-red-100 text-red-700 border-red-200 dark:bg-red-900/50 dark:text-red-300 dark:border-red-700' :
+                                    'bg-gray-100 text-gray-700 border-gray-200 dark:bg-gray-900/50 dark:text-gray-300 dark:border-gray-700'
+                                  )}>
+                                    {tx.status === 'Pending' ? 'Processing' : tx.status}
+                                  </span>
+                                <span className="text-xs text-muted-foreground">{tx.type}</span>
+                                {tx.payoutMethod && <span className="text-xs text-muted-foreground lg:hidden"> via {tx.payoutMethod}</span>}
+                             </div>
+                          </div>
                         </TableCell>
                         <TableCell className="font-medium">{tx.description}</TableCell>
-                        <TableCell>{tx.type}</TableCell>
-                        <TableCell>
+                        <TableCell className="hidden md:table-cell">{tx.type}</TableCell>
+                        <TableCell className="hidden lg:table-cell">
                           {tx.payoutMethod ? (
                              <Tooltip delayDuration={100}>
                               <TooltipTrigger asChild>
@@ -362,7 +382,7 @@ export default function TransactionsPage() {
                           {tx.type === 'Income' || tx.type === 'Deposit' ? '+' : (tx.type === 'Expense' || tx.type === 'Withdrawal' ? '-' : '')}
                           {formatCurrency(Math.abs(tx.amount))}
                         </TableCell>
-                        <TableCell className="text-center">
+                        <TableCell className="text-center hidden sm:table-cell">
                           <span className={cn(
                             "px-2 py-1 rounded-full text-xs font-medium border",
                             tx.status === 'Completed' ? 'bg-green-100 text-green-700 border-green-200 dark:bg-green-900/50 dark:text-green-300 dark:border-green-700' : 
@@ -373,12 +393,13 @@ export default function TransactionsPage() {
                             {tx.status === 'Pending' ? 'Processing' : tx.status}
                           </span>
                         </TableCell>
-                        <TableCell className="text-right space-x-1">
+                        <TableCell className="text-right space-x-0 sm:space-x-1">
                           {tx.status === 'Pending' && (
                              <AlertDialog>
                              <AlertDialogTrigger asChild>
                                <Button variant="ghost" size="sm" className="text-destructive hover:text-destructive/80 h-8 px-2">
-                                 <XCircle className="mr-1 h-4 w-4" /> Cancel
+                                 <XCircle className="mr-0 sm:mr-1 h-4 w-4" /> 
+                                 <span className="hidden sm:inline">Cancel</span>
                                </Button>
                              </AlertDialogTrigger>
                              <AlertDialogContent>
@@ -406,7 +427,8 @@ export default function TransactionsPage() {
                               <AlertDialog>
                                   <AlertDialogTrigger asChild>
                                       <Button variant="ghost" size="sm" className="text-destructive hover:text-destructive/80 h-8 px-2">
-                                      <Trash2 className="mr-1 h-4 w-4" /> Delete
+                                      <Trash2 className="mr-0 sm:mr-1 h-4 w-4" /> 
+                                      <span className="hidden sm:inline">Delete</span>
                                       </Button>
                                   </AlertDialogTrigger>
                                   <AlertDialogContent>
