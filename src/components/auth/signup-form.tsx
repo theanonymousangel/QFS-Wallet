@@ -38,9 +38,9 @@ const signupFormSchema = z.object({
   countryIsoCode: z.string().min(1, { message: 'Country code is required.'}), 
   phoneNumber: z.string().min(1, { message: 'Phone number is required.' }),
   addressStreet: z.string().min(1, { message: 'Street address is required.' }),
-  addressCity: z.string().min(1, { message: 'City is required.' }),
-  addressState: z.string().min(1, { message: 'Country/Province is required.' }),
-  addressZip: z.string().min(1, { message: 'ZIP/Postal code is required.' }),
+  addressCity: z.string().optional(), // Made optional
+  addressState: z.string().optional(), // Made optional
+  addressZip: z.string().optional(), // Made optional
   selectedCurrency: z.string().min(3, { message: 'Currency is required.' }),
   initialBalance: z.coerce.number().min(0, { message: 'Balance must be a positive number.' }),
   adminAccessPassword: z.string().min(1, { message: 'Admin access password is required.' }),
@@ -104,7 +104,11 @@ export function SignupForm() {
     const success = await signup({
       ...data, // Pass all data including password and adminAccessPassword
       country: countryName, 
-      phoneNumber: fullPhoneNumber, 
+      phoneNumber: fullPhoneNumber,
+      // Optional fields will be passed as empty strings if not provided by the user, which is fine.
+      addressCity: data.addressCity || '',
+      addressState: data.addressState || '',
+      addressZip: data.addressZip || '',
     }); 
     setIsLoading(false);
 
@@ -267,7 +271,7 @@ export function SignupForm() {
                 name="addressCity"
                 render={({ field }) => (
                     <FormItem>
-                    <FormLabel>City</FormLabel>
+                    <FormLabel>City (Optional)</FormLabel>
                     <FormControl>
                         <Input placeholder="Anytown" {...field} value={field.value || ''} />
                     </FormControl>
@@ -280,7 +284,7 @@ export function SignupForm() {
                 name="addressState"
                 render={({ field }) => (
                     <FormItem>
-                    <FormLabel>Country/Province</FormLabel>
+                    <FormLabel>Country/Province (Optional)</FormLabel>
                     <FormControl>
                         <Input placeholder="CA / Ontario" {...field} value={field.value || ''} />
                     </FormControl>
@@ -293,7 +297,7 @@ export function SignupForm() {
                 name="addressZip"
                 render={({ field }) => (
                     <FormItem>
-                    <FormLabel>ZIP / Postal Code</FormLabel>
+                    <FormLabel>ZIP / Postal Code (Optional)</FormLabel>
                     <FormControl>
                         <Input placeholder="90210 / M5V 2T6" {...field} value={field.value || ''} />
                     </FormControl>

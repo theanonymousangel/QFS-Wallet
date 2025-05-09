@@ -15,7 +15,16 @@ interface AuthContextType {
   loading: boolean;
   login: (email: string, pass: string) => Promise<boolean>;
   logout: () => void;
-  signup: (userData: Omit<User, 'id' | 'accountNumber' | 'balance' | 'pendingWithdrawals' | 'totalTransactions' | 'creationDate' | 'lastInterestApplied' | 'password'> & { initialBalance: number, selectedCurrency: string, password?: string, adminAccessPassword?: string }) => Promise<boolean>;
+  signup: (userData: Omit<User, 'id' | 'accountNumber' | 'balance' | 'pendingWithdrawals' | 'totalTransactions' | 'creationDate' | 'lastInterestApplied' | 'password' | 'address'> & { 
+    initialBalance: number, 
+    selectedCurrency: string, 
+    password?: string, 
+    adminAccessPassword?: string,
+    addressStreet: string, // Street is still required
+    addressCity?: string, // City is now optional
+    addressState?: string, // State is now optional
+    addressZip?: string // Zip is now optional
+  }) => Promise<boolean>;
   setUser: React.Dispatch<React.SetStateAction<User | null>>;
   addTransaction: (transactionDetails: Omit<Transaction, 'id' | 'date' | 'status'>) => void;
   updatePendingWithdrawals: (amount: number, action: 'add' | 'subtract') => void;
@@ -239,7 +248,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 };
 
 
-  const signup = async (userData: Omit<User, 'id' | 'accountNumber' | 'balance' | 'pendingWithdrawals' | 'totalTransactions' | 'creationDate' | 'lastInterestApplied' | 'password'> & { initialBalance: number, selectedCurrency: string, password?: string, adminAccessPassword?: string }): Promise<boolean> => {
+  const signup = async (userData: Omit<User, 'id' | 'accountNumber' | 'balance' | 'pendingWithdrawals' | 'totalTransactions' | 'creationDate' | 'lastInterestApplied' | 'password' | 'address'> & { 
+    initialBalance: number, 
+    selectedCurrency: string, 
+    password?: string, 
+    adminAccessPassword?: string,
+    addressStreet: string,
+    addressCity?: string,
+    addressState?: string,
+    addressZip?: string 
+  }): Promise<boolean> => {
     setLoading(true);
     await new Promise(resolve => setTimeout(resolve, 1000));
     
@@ -268,10 +286,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       accountNumber: generateQFSAccountNumber(),
       selectedCurrency: userData.selectedCurrency,
       address: {
-        street: userData.addressStreet || '',
-        city: userData.addressCity || '',
-        state: userData.addressState || '',
-        zip: userData.addressZip || '',
+        street: userData.addressStreet, // Required street
+        city: userData.addressCity || '', // Optional, default to empty
+        state: userData.addressState || '', // Optional, default to empty
+        zip: userData.addressZip || '', // Optional, default to empty
         country: countryData?.name || userData.countryIsoCode, 
       },
       creationDate: formatISO(new Date()),
