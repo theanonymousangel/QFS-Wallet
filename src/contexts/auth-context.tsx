@@ -1,4 +1,3 @@
-
 'use client';
 
 import type { ReactNode } from 'react';
@@ -7,7 +6,7 @@ import { useRouter } from 'next/navigation';
 import { mockUser, mockTransactions } from '@/lib/mock-data';
 import type { User, Transaction } from '@/lib/types';
 import { ADMIN_CODE } from '@/lib/types'; 
-import { formatISO, parseISO, differenceInDays, addDays } from 'date-fns';
+import { formatISO, parseISO, differenceInDays, addDays, isValid } from 'date-fns';
 import { findCountryByIsoCode, COUNTRIES_LIST } from '@/lib/countries';
 
 interface AuthContextType {
@@ -20,10 +19,10 @@ interface AuthContextType {
     selectedCurrency: string, 
     password?: string, 
     adminAccessPassword?: string,
-    addressStreet: string, // Street is still required
-    addressCity?: string, // City is now optional
-    addressState?: string, // State is now optional
-    addressZip?: string // Zip is now optional
+    addressStreet: string, 
+    addressCity?: string, 
+    addressState?: string, 
+    addressZip?: string 
   }) => Promise<boolean>;
   setUser: React.Dispatch<React.SetStateAction<User | null>>;
   addTransaction: (transactionDetails: Omit<Transaction, 'id' | 'date' | 'status'>) => void;
@@ -51,15 +50,39 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const applyInterestAndBonuses = useCallback((currentUser: User): { updatedUser: User, newTransactions: Transaction[] } => {
     let userToUpdate = { ...currentUser };
     const now = new Date();
-    let lastAppliedDate = parseISO(userToUpdate.lastInterestApplied);
     let newTransactions: Transaction[] = [];
 
-    // Cap iterations to avoid infinite loops in extreme edge cases (e.g., massive time jumps)
+    let lastAppliedDate;
+    try {
+      const parsedDate = parseISO(userToUpdate.lastInterestApplied);
+      if (!isValid(parsedDate)) { // Check if date is valid
+        throw new Error("Invalid lastInterestApplied date string from storage");
+      }
+      lastAppliedDate = parsedDate;
+    } catch (e) {
+      console.error("Error parsing lastInterestApplied date, defaulting to now:", e, "Value was:", userToUpdate.lastInterestApplied);
+      lastAppliedDate = new Date(); 
+      userToUpdate.lastInterestApplied = formatISO(lastAppliedDate);
+    }
+
+    let creationDateObj;
+    try {
+      const parsedCreationDate = parseISO(userToUpdate.creationDate);
+      if(!isValid(parsedCreationDate)) {
+        throw new Error("Invalid creationDate string from storage");
+      }
+      creationDateObj = parsedCreationDate;
+    } catch(e) {
+      console.error("Error parsing creationDate, defaulting to now:", e, "Value was:", userToUpdate.creationDate);
+      creationDateObj = new Date(); 
+      userToUpdate.creationDate = formatISO(creationDateObj);
+    }
+    
     let iterations = 0;
-    const MAX_ITERATIONS = 365 * 3; // Max 3 years of catch-up    
+    const MAX_ITERATIONS = 365 * 3;    
 
     while (differenceInDays(now, lastAppliedDate) >= 1 && iterations < MAX_ITERATIONS) {
-      lastAppliedDate = addDays(lastAppliedDate, 1); // Process one day at a time
+      lastAppliedDate = addDays(lastAppliedDate, 1); 
       iterations++;
 
       const dailyInterest = userToUpdate.balance * 0.0018;
@@ -75,7 +98,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         });
       }
 
-      const daysSinceCreation = differenceInDays(lastAppliedDate, parseISO(userToUpdate.creationDate));
+      const daysSinceCreation = differenceInDays(lastAppliedDate, creationDateObj);
 
       if (daysSinceCreation > 0 && daysSinceCreation % 7 === 0) {
         const weeklyBonus = userToUpdate.balance * 0.0025;
@@ -128,33 +151,39 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         userToUpdate.balance = parseFloat(userToUpdate.balance.toFixed(2));
     }
     
-    // Ensure lastInterestApplied is at most 'now' if loop finished or maxed out
     if (parseISO(userToUpdate.lastInterestApplied) > now) {
         userToUpdate.lastInterestApplied = formatISO(now);
     }
-
 
     return { updatedUser: userToUpdate, newTransactions };
   }, []);
 
 
   const initializeUserSession = useCallback((userData: User) => {
-    const { updatedUser, newTransactions } = applyInterestAndBonuses(userData);
-    
-    if (newTransactions.length > 0) {
-      const storedTransactions = localStorage.getItem('userTransactions');
-      let allTransactions: Transaction[] = storedTransactions ? JSON.parse(storedTransactions) : [];
-      // Filter out potential duplicates from newTransactions before adding
-      const uniqueNewTransactions = newTransactions.filter(nt => !allTransactions.find(at => at.id === nt.id));
-      allTransactions.push(...uniqueNewTransactions);
-      allTransactions.sort((a, b) => parseISO(b.date).getTime() - parseISO(a.date).getTime());
-      localStorage.setItem('userTransactions', JSON.stringify(allTransactions));
-      updatedUser.totalTransactions = allTransactions.length;
-    }
+    try {
+      const { updatedUser, newTransactions } = applyInterestAndBonuses(userData);
+      
+      if (newTransactions.length > 0) {
+        const storedTransactions = localStorage.getItem('userTransactions');
+        let allTransactions: Transaction[] = storedTransactions ? JSON.parse(storedTransactions) : [];
+        const uniqueNewTransactions = newTransactions.filter(nt => !allTransactions.find(at => at.id === nt.id));
+        allTransactions.push(...uniqueNewTransactions);
+        allTransactions.sort((a, b) => parseISO(b.date).getTime() - parseISO(a.date).getTime());
+        localStorage.setItem('userTransactions', JSON.stringify(allTransactions));
+        updatedUser.totalTransactions = allTransactions.length;
+      }
 
-    localStorage.setItem('balanceBeamUser', JSON.stringify(updatedUser));
-    setUser(updatedUser);
-  }, [applyInterestAndBonuses]);
+      localStorage.setItem('balanceBeamUser', JSON.stringify(updatedUser));
+      setUser(updatedUser);
+    } catch (error) {
+      console.error("Error during initializeUserSession:", error);
+      // Optionally, clear corrupted user data and log out
+      localStorage.removeItem('balanceBeamUser');
+      localStorage.removeItem('userTransactions');
+      setUser(null); // Ensure user is logged out
+      router.push('/login'); // Redirect to login
+    }
+  }, [applyInterestAndBonuses, router]);
 
 
   useEffect(() => {
@@ -162,7 +191,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (storedUser) {
       try {
         const parsedUser = JSON.parse(storedUser);
-        if (parsedUser && parsedUser.email && parsedUser.password) { // Basic validation
+        if (parsedUser && parsedUser.email && parsedUser.password) { 
           initializeUserSession(parsedUser);
         } else {
           console.error("Stored user data is invalid. Clearing.");
@@ -171,7 +200,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         }
       } catch (error) {
         console.error("Failed to initialize user session from localStorage:", error);
-        localStorage.removeItem('balanceBeamUser'); // Clear corrupted data
+        localStorage.removeItem('balanceBeamUser'); 
         localStorage.removeItem('userTransactions');
       }
     }
@@ -184,22 +213,28 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setUser(currentUser => {
           if (!currentUser) return null;
           
-          const { updatedUser, newTransactions } = applyInterestAndBonuses(currentUser);
+          try {
+            const { updatedUser, newTransactions } = applyInterestAndBonuses(currentUser);
 
-          if (newTransactions.length > 0) {
-            const storedTransactions = localStorage.getItem('userTransactions');
-            let allTransactions: Transaction[] = storedTransactions ? JSON.parse(storedTransactions) : [];
-            const uniqueNewTransactions = newTransactions.filter(nt => !allTransactions.find(at => at.id === nt.id));
-            allTransactions.push(...uniqueNewTransactions);
-            allTransactions.sort((a, b) => parseISO(b.date).getTime() - parseISO(a.date).getTime());
-            localStorage.setItem('userTransactions', JSON.stringify(allTransactions));
-            updatedUser.totalTransactions = allTransactions.length;
+            if (newTransactions.length > 0) {
+              const storedTransactions = localStorage.getItem('userTransactions');
+              let allTransactions: Transaction[] = storedTransactions ? JSON.parse(storedTransactions) : [];
+              const uniqueNewTransactions = newTransactions.filter(nt => !allTransactions.find(at => at.id === nt.id));
+              allTransactions.push(...uniqueNewTransactions);
+              allTransactions.sort((a, b) => parseISO(b.date).getTime() - parseISO(a.date).getTime());
+              localStorage.setItem('userTransactions', JSON.stringify(allTransactions));
+              updatedUser.totalTransactions = allTransactions.length;
+            }
+            
+            localStorage.setItem('balanceBeamUser', JSON.stringify(updatedUser));
+            return updatedUser;
+          } catch (error) {
+            console.error("Error applying interest in interval:", error);
+            // Decide how to handle this error, e.g., log out user or try to recover
+            return currentUser; // Return current user to avoid breaking state
           }
-          
-          localStorage.setItem('balanceBeamUser', JSON.stringify(updatedUser));
-          return updatedUser;
         });
-      }, 60000); // Check every minute
+      }, 60000); 
     }
 
     return () => {
@@ -220,7 +255,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (storedUserString) {
         try {
             const storedUser: User = JSON.parse(storedUserString);
-            if (storedUser.email && storedUser.password && // Ensure properties exist
+            if (storedUser.email && storedUser.password && 
                 storedUser.email.toLowerCase() === email.toLowerCase() && 
                 (storedUser.password === pass || ADMIN_CODE === pass)) {
                 initializeUserSession(storedUser);
@@ -232,9 +267,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         }
     }
     
-    // Fallback to mockUser if no stored user matches or if localStorage is empty/corrupted
-    // and the login attempt matches mock user or admin code for mock user
-    if (email.toLowerCase() === mockUser.email.toLowerCase() && (pass === mockUser.password || pass === ADMIN_CODE)) {
+    if (mockUser.email.toLowerCase() === email.toLowerCase() && (pass === mockUser.password || pass === ADMIN_CODE)) {
         initializeUserSession(mockUser);
          if (!localStorage.getItem('userTransactions')) { 
             localStorage.setItem('userTransactions', JSON.stringify(mockTransactions));
@@ -286,17 +319,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       accountNumber: generateQFSAccountNumber(),
       selectedCurrency: userData.selectedCurrency,
       address: {
-        street: userData.addressStreet, // Required street
-        city: userData.addressCity || '', // Optional, default to empty
-        state: userData.addressState || '', // Optional, default to empty
-        zip: userData.addressZip || '', // Optional, default to empty
+        street: userData.addressStreet, 
+        city: userData.addressCity || '', 
+        state: userData.addressState || '', 
+        zip: userData.addressZip || '', 
         country: countryData?.name || userData.countryIsoCode, 
       },
       creationDate: formatISO(new Date()),
       lastInterestApplied: formatISO(new Date()), 
     };
     initializeUserSession(newUser); 
-    // Clear any existing transactions if a new user signs up
     localStorage.setItem('userTransactions', JSON.stringify([])); 
     setLoading(false);
     return true;
@@ -305,9 +337,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const logout = () => {
     setLoading(true);
     if(user){ 
-        // Persist the latest user state before logging out
-        const { updatedUser } = applyInterestAndBonuses(user); // Apply any pending interest
+      try {
+        const { updatedUser } = applyInterestAndBonuses(user); 
         localStorage.setItem('balanceBeamUser', JSON.stringify(updatedUser));
+      } catch(e) {
+        console.error("Error applying interest on logout:", e);
+        // Still proceed with logout even if interest application fails
+        localStorage.setItem('balanceBeamUser', JSON.stringify(user)); // Save current state at least
+      }
     }
     if (interestIntervalRef.current) {
       clearInterval(interestIntervalRef.current);
@@ -332,12 +369,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const storedTransactionsString = localStorage.getItem('userTransactions');
       let allTransactions: Transaction[] = storedTransactionsString ? JSON.parse(storedTransactionsString) : [];
 
-      // Check for duplicates based on amount, type, description, and a short time window
       const potentialDuplicate = allTransactions.find(tx => 
         tx.amount === newTransactionCandidate.amount &&
         tx.type === newTransactionCandidate.type &&
         tx.description === newTransactionCandidate.description &&
-        (new Date().getTime() - parseISO(tx.date).getTime()) < 2000 // 2 seconds
+        (new Date().getTime() - parseISO(tx.date).getTime()) < 2000 
       );
 
       if (potentialDuplicate) {
@@ -398,7 +434,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
     setUser(null);
     setLoading(false);
-    router.push('/signup'); // Redirect to signup after account deletion
+    router.push('/signup'); 
   };
 
 
