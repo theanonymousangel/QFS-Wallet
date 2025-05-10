@@ -8,7 +8,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Button } from '@/components/ui/button';
-import { ArrowRightLeft, ArrowUpRight, ArrowDownLeft, Landmark, ArrowUpDown, Filter, Info, XCircle, Trash2, CreditCard } from 'lucide-react';
+import { ArrowRightLeft, ArrowUpRight, ArrowDownLeft, Landmark, ArrowUpDown, Filter, Info, XCircle, Trash2, CreditCard, ChevronLeft, ChevronRight } from 'lucide-react';
 import type { Transaction } from '@/lib/types';
 import { cn } from '@/lib/utils';
 import { format, differenceInDays, parseISO } from 'date-fns';
@@ -53,6 +53,8 @@ const getTransactionIcon = (tx: Transaction) => {
 type SortKey = 'date' | 'description' | 'amount' | 'type' | 'status' | 'payoutMethod';
 type SortOrder = 'asc' | 'desc';
 
+const ITEMS_PER_PAGE = 10;
+
 export default function TransactionsPage() {
   const [allTransactions, setAllTransactions] = useState<Transaction[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
@@ -61,6 +63,7 @@ export default function TransactionsPage() {
   const [sortOrder, setSortOrder] = useState<SortOrder>('desc');
   const { user, setUser, updatePendingWithdrawals } = useAuth();
   const { toast } = useToast();
+  const [currentPage, setCurrentPage] = useState(1);
 
   const selectedUserCurrency = user ? (findCurrencyByCode(user.selectedCurrency) || getDefaultCurrency()) : getDefaultCurrency();
 
@@ -172,6 +175,15 @@ export default function TransactionsPage() {
     return sortableTransactions;
   }, [allTransactions, searchTerm, filterType, sortKey, sortOrder]);
 
+  const totalPages = Math.max(1, Math.ceil(filteredAndSortedTransactions.length / ITEMS_PER_PAGE));
+
+  const paginatedTransactions = useMemo(() => {
+    const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
+    const endIndex = startIndex + ITEMS_PER_PAGE;
+    return filteredAndSortedTransactions.slice(startIndex, endIndex);
+  }, [filteredAndSortedTransactions, currentPage]);
+
+
   const handleSort = (key: SortKey) => {
     if (sortKey === key) {
       setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
@@ -179,6 +191,7 @@ export default function TransactionsPage() {
       setSortKey(key);
       setSortOrder('asc');
     }
+    setCurrentPage(1); // Reset to first page on sort
   };
 
   const handleCancelTransaction = async (transactionId: string) => {
@@ -270,6 +283,14 @@ export default function TransactionsPage() {
     return relevantDetails || 'Details not specified';
 };
 
+const handleNextPage = () => {
+    setCurrentPage((prev) => Math.min(prev + 1, totalPages));
+};
+
+const handlePreviousPage = () => {
+    setCurrentPage((prev) => Math.max(prev - 1, 1));
+};
+
   return (
     <div className="space-y-6">
       <h1 className="text-3xl font-bold tracking-tight text-foreground">Transaction History</h1>
@@ -285,10 +306,10 @@ export default function TransactionsPage() {
             <Input
               placeholder="Search descriptions, methods..."
               value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
+              onChange={(e) => {setSearchTerm(e.target.value); setCurrentPage(1);}}
               className="max-w-xs w-full sm:w-auto"
             />
-            <Select value={filterType} onValueChange={(value: Transaction['type'] | 'all') => setFilterType(value)}>
+            <Select value={filterType} onValueChange={(value: Transaction['type'] | 'all') => {setFilterType(value); setCurrentPage(1);}}>
               <SelectTrigger className="w-full sm:w-[180px]">
                 <Filter className="mr-2 h-4 w-4" />
                 <SelectValue placeholder="Filter by type" />
@@ -330,8 +351,8 @@ export default function TransactionsPage() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {filteredAndSortedTransactions.length > 0 ? (
-                    filteredAndSortedTransactions.map((tx) => (
+                  {paginatedTransactions.length > 0 ? (
+                    paginatedTransactions.map((tx) => (
                       <TableRow key={`${tx.id}-${tx.date}-${tx.amount}`} className="hover:bg-accent/20">
                         <TableCell className="hidden sm:table-cell">{getTransactionIcon(tx)}</TableCell>
                         <TableCell>
@@ -465,6 +486,33 @@ export default function TransactionsPage() {
               </Table>
             </div>
           </TooltipProvider>
+          {filteredAndSortedTransactions.length > ITEMS_PER_PAGE && (
+            <div className="flex items-center justify-between pt-4">
+              <span className="text-sm text-muted-foreground">
+                Page {currentPage} of {totalPages}
+              </span>
+              <div className="space-x-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handlePreviousPage}
+                  disabled={currentPage === 1}
+                >
+                  <ChevronLeft className="mr-1 h-4 w-4" />
+                  Previous
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleNextPage}
+                  disabled={currentPage === totalPages}
+                >
+                  Next
+                  <ChevronRight className="ml-1 h-4 w-4" />
+                </Button>
+              </div>
+            </div>
+          )}
         </CardContent>
       </Card>
     </div>
@@ -473,3 +521,4 @@ export default function TransactionsPage() {
 
 
     
+
