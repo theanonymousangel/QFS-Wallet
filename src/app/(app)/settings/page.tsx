@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -168,7 +169,7 @@ export default function SettingsPage() {
       setIsAdminEditing(true);
       setShowAdminCodeDialog(false);
       setAdminCodeInput(''); 
-      toast({ title: "Admin Access Granted", description: "You can now edit protected fields." });
+      toast({ title: "Admin Access Granted", description: "You can now edit protected fields.", duration: 3000 });
     } else {
       toast({ title: "Admin Access Denied", description: "Incorrect admin code.", variant: "destructive" });
       setAdminCodeInput(''); 
@@ -296,10 +297,13 @@ export default function SettingsPage() {
     form.reset(newFormValues, { keepSubmitSucceeded: true, keepDirtyValues: false, keepValues: false });
     
     setIsLoading(false);
-    toast({
-      title: 'Settings Updated',
-      description: 'Your profile information has been saved.',
-    });
+    if (form.formState.isDirty || balanceUpdated || passwordChanged) {
+        toast({
+          title: 'Settings Updated',
+          description: 'Your profile information has been saved.',
+          duration: 3000,
+        });
+    }
   }
 
 
@@ -590,7 +594,7 @@ export default function SettingsPage() {
                     </AlertDialogContent>
                 </AlertDialog>
                 
-                <Button type="submit" disabled={isLoading || !form.formState.isDirty}>
+                <Button type="submit" disabled={isLoading || (!form.formState.isDirty && !form.formState.submitCount)}>
                   {isLoading ? (
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                   ) : (
@@ -618,6 +622,7 @@ export default function SettingsPage() {
               placeholder="Enter admin code"
               value={adminCodeInput}
               onChange={(e) => setAdminCodeInput(e.target.value)}
+              suppressHydrationWarning // Added to prevent hydration error from password field
             />
           </div>
           <AlertDialogFooter>
@@ -629,4 +634,5 @@ export default function SettingsPage() {
     </div>
   );
 }
+
 
