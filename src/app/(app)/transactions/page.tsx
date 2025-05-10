@@ -334,10 +334,10 @@ const handlePreviousPage = () => {
                     <TableHead onClick={() => handleSort('description')} className="cursor-pointer hover:text-primary min-w-[120px] sm:min-w-[180px] lg:min-w-[250px]">
                       Description <ArrowUpDown className="ml-1 inline-block h-4 w-4" />
                     </TableHead>
-                    <TableHead onClick={() => handleSort('type')} className="cursor-pointer hover:text-primary min-w-[100px] hidden sm:table-cell">
+                    <TableHead onClick={() => handleSort('type')} className="cursor-pointer hover:text-primary px-2 text-xs sm:px-3 sm:text-sm md:px-4 min-w-[70px]">
                       Type <ArrowUpDown className="ml-1 inline-block h-4 w-4" />
                     </TableHead>
-                    <TableHead onClick={() => handleSort('payoutMethod')} className="cursor-pointer hover:text-primary min-w-[120px] hidden md:table-cell">
+                    <TableHead onClick={() => handleSort('payoutMethod')} className="cursor-pointer hover:text-primary px-2 text-xs sm:px-3 sm:text-sm md:px-4 min-w-[100px]">
                       Method <ArrowUpDown className="ml-1 inline-block h-4 w-4" />
                     </TableHead>
                     <TableHead onClick={() => handleSort('amount')} className="text-right cursor-pointer hover:text-primary min-w-[100px] sm:min-w-[120px]">
@@ -362,18 +362,9 @@ const handlePreviousPage = () => {
                         </TableCell>
                         <TableCell className="font-medium">
                           {tx.description}
-                           {/* Mobile/Tablet specific info for Type and Method */}
-                            <div className="mt-1">
-                                <span className="text-xs text-muted-foreground sm:hidden block">Type: {tx.type}</span>
-                                {tx.payoutMethod && (
-                                <span className="text-xs text-muted-foreground md:hidden block">
-                                    Method: {tx.payoutMethod}
-                                </span>
-                                )}
-                            </div>
                         </TableCell>
-                        <TableCell className="hidden sm:table-cell">{tx.type}</TableCell>
-                        <TableCell className="hidden md:table-cell">
+                        <TableCell className="px-2 text-xs sm:px-3 sm:text-sm md:px-4">{tx.type}</TableCell>
+                        <TableCell className="px-2 text-xs sm:px-3 sm:text-sm md:px-4">
                           {tx.payoutMethod ? (
                              <Tooltip delayDuration={100}>
                               <TooltipTrigger asChild>
