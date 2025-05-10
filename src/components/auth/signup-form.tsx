@@ -74,8 +74,8 @@ export function SignupForm() {
       initialBalance: 0,
       adminPassword: '',
     },
-    mode: 'onSubmit', // Default mode
-    reValidateMode: 'onSubmit', // Changed from default 'onChange'
+    mode: 'onSubmit',
+    reValidateMode: 'onSubmit', 
   });
 
   const watchedCountryIsoCode = form.watch('countryIsoCode');
@@ -84,10 +84,16 @@ export function SignupForm() {
   useEffect(() => {
     if (watchedCountryIsoCode) {
       setSelectedCountry(findCountryByIsoCode(watchedCountryIsoCode));
+      // Only validate the phone number field change if the form has already been submitted once.
+      // This prevents the "required" message from showing up prematurely.
+      form.setValue('phoneNumber', '', {
+        shouldValidate: form.formState.isSubmitted, 
+        shouldDirty: true,
+      });
     } else {
       setSelectedCountry(undefined);
     }
-  }, [watchedCountryIsoCode]);
+  }, [watchedCountryIsoCode, form]);
 
   useEffect(() => {
     const currency = findCurrencyByCode(watchedCurrencyCode);
@@ -235,7 +241,6 @@ export function SignupForm() {
                   <FormLabel>Country Code</FormLabel>
                   <Select onValueChange={(value) => {
                       field.onChange(value);
-                      form.setValue('phoneNumber', '', {shouldValidate: true, shouldDirty: true}); 
                     }} 
                     value={field.value || ''} 
                     defaultValue={field.value || ''}>
