@@ -161,7 +161,7 @@ export default function TransactionsPage() {
       } else if (valA === undefined && valB === undefined) {
         comparison = 0; 
       } else if (sortKey === 'date') {
-        comparison = new Date(valA as string).getTime() - new Date(valB as string).getTime();
+        comparison = new Date(valB as string).getTime() - new Date(valA as string).getTime(); // Sort by date descending by default
       } else if (sortKey === 'amount') {
         comparison = (valA as number) - (valB as number);
       } else if (typeof valA === 'string' && typeof valB === 'string') {
@@ -185,15 +185,12 @@ export default function TransactionsPage() {
 
   const handleSort = (newSortKey: SortKey) => {
     if (sortKey === newSortKey) {
-      // Toggle order if same key
       setSortOrder(prevSortOrder => prevSortOrder === 'asc' ? 'desc' : 'asc');
     } else {
-      // New key selected
       setSortKey(newSortKey);
-      // Set order: if new key is 'date', default to 'desc', otherwise 'asc'
-      setSortOrder(newSortKey === 'date' ? 'desc' : 'asc');
+      setSortOrder(newSortKey === 'date' ? 'desc' : 'asc'); // Default sort for date is desc
     }
-    setCurrentPage(1); // Reset to first page on sort
+    setCurrentPage(1); 
   };
 
   const handleCancelTransaction = async (transactionId: string) => {
@@ -337,10 +334,10 @@ const handlePreviousPage = () => {
                     <TableHead onClick={() => handleSort('description')} className="cursor-pointer hover:text-primary min-w-[120px] sm:min-w-[180px] lg:min-w-[250px]">
                       Description <ArrowUpDown className="ml-1 inline-block h-4 w-4" />
                     </TableHead>
-                    <TableHead onClick={() => handleSort('type')} className="cursor-pointer hover:text-primary min-w-[100px] hidden md:table-cell">
+                    <TableHead onClick={() => handleSort('type')} className="cursor-pointer hover:text-primary min-w-[100px] hidden sm:table-cell">
                       Type <ArrowUpDown className="ml-1 inline-block h-4 w-4" />
                     </TableHead>
-                    <TableHead onClick={() => handleSort('payoutMethod')} className="cursor-pointer hover:text-primary min-w-[120px] hidden lg:table-cell">
+                    <TableHead onClick={() => handleSort('payoutMethod')} className="cursor-pointer hover:text-primary min-w-[120px] hidden md:table-cell">
                       Method <ArrowUpDown className="ml-1 inline-block h-4 w-4" />
                     </TableHead>
                     <TableHead onClick={() => handleSort('amount')} className="text-right cursor-pointer hover:text-primary min-w-[100px] sm:min-w-[120px]">
@@ -349,7 +346,7 @@ const handlePreviousPage = () => {
                     <TableHead onClick={() => handleSort('status')} className="text-center cursor-pointer hover:text-primary min-w-[90px] table-cell">
                       Status <ArrowUpDown className="ml-1 inline-block h-4 w-4" />
                     </TableHead>
-                    <TableHead className="text-right min-w-[80px] sm:min-w-[120px]">Actions</TableHead> {/* Adjusted min-width for actions */}
+                    <TableHead className="text-right min-w-[80px] sm:min-w-[120px]">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -367,16 +364,16 @@ const handlePreviousPage = () => {
                           {tx.description}
                            {/* Mobile/Tablet specific info for Type and Method */}
                             <div className="mt-1">
-                                <span className="text-xs text-muted-foreground md:hidden block">Type: {tx.type}</span>
+                                <span className="text-xs text-muted-foreground sm:hidden block">Type: {tx.type}</span>
                                 {tx.payoutMethod && (
-                                <span className="text-xs text-muted-foreground lg:hidden block">
+                                <span className="text-xs text-muted-foreground md:hidden block">
                                     Method: {tx.payoutMethod}
                                 </span>
                                 )}
                             </div>
                         </TableCell>
-                        <TableCell className="hidden md:table-cell">{tx.type}</TableCell>
-                        <TableCell className="hidden lg:table-cell">
+                        <TableCell className="hidden sm:table-cell">{tx.type}</TableCell>
+                        <TableCell className="hidden md:table-cell">
                           {tx.payoutMethod ? (
                              <Tooltip delayDuration={100}>
                               <TooltipTrigger asChild>
@@ -415,13 +412,13 @@ const handlePreviousPage = () => {
                           </span>
                         </TableCell>
                         <TableCell className="text-right">
-                          <div className="flex justify-end items-center space-x-1"> {/* Adjusted space-x for all screens */}
+                          <div className="flex justify-end items-center space-x-1">
                             {tx.status === 'Pending' && (
                               <AlertDialog>
                               <AlertDialogTrigger asChild>
                                 <Button variant="ghost" size="sm" className="text-destructive hover:text-destructive/80 h-8 px-2">
                                   <XCircle className="mr-1 h-4 w-4" /> 
-                                  <span className="inline">Cancel</span>
+                                  <span className="hidden sm:inline">Cancel</span>
                                 </Button>
                               </AlertDialogTrigger>
                               <AlertDialogContent>
@@ -450,7 +447,7 @@ const handlePreviousPage = () => {
                                     <AlertDialogTrigger asChild>
                                         <Button variant="ghost" size="sm" className="text-destructive hover:text-destructive/80 h-8 px-2">
                                         <Trash2 className="mr-1 h-4 w-4" /> 
-                                        <span className="inline">Delete</span>
+                                        <span className="hidden sm:inline">Delete</span>
                                         </Button>
                                     </AlertDialogTrigger>
                                     <AlertDialogContent>
@@ -520,3 +517,4 @@ const handlePreviousPage = () => {
     </div>
   );
 }
+
