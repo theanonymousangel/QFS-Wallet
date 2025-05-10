@@ -72,6 +72,8 @@ export default function SettingsPage() {
   const [showDeleteConfirmDialog, setShowDeleteConfirmDialog] = useState(false);
   const [selectedCountry, setSelectedCountry] = useState<Country | undefined>(undefined);
   const [showPassword, setShowPassword] = useState(false);
+  const [balanceUpdated, setBalanceUpdated] = useState(false);
+  const [passwordChanged, setPasswordChanged] = useState(false);
 
   const selectedUserCurrency = user ? (findCurrencyByCode(user.selectedCurrency) || getDefaultCurrency()) : getDefaultCurrency();
 
@@ -235,12 +237,12 @@ export default function SettingsPage() {
         changesMade = true;
     }
     
-    let balanceUpdated = false;
+    // Use setBalanceUpdated from component state
     if (isAdminEditing && form.formState.dirtyFields.balance) {
       if (data.balance !== user.balance) {
         const success = await updateUserBalance(data.balance, ADMIN_CODE); 
         if (success) {
-          balanceUpdated = true;
+          setBalanceUpdated(true); // Update state
           changesMade = true;
         } else {
           toast({ title: "Balance Update Failed", description: "Could not update balance.", variant: "destructive", duration: 3000});
@@ -248,11 +250,11 @@ export default function SettingsPage() {
       }
     }
     
-    let passwordChanged = false;
+    // Use setPasswordChanged from component state
     if (isAdminEditing && data.password && form.formState.dirtyFields.password) {
       console.log("Password change requested (not implemented in AuthContext). New password:", data.password);
       updatedUserFields.password = data.password; 
-      passwordChanged = true;
+      setPasswordChanged(true); // Update state
       changesMade = true;
     }
 
@@ -266,7 +268,7 @@ export default function SettingsPage() {
         userToUpdate.address = updatedUserFields.address;
       }
 
-
+      // If balance was updated via setBalanceUpdated, ensure user object reflects this for local storage
       if (balanceUpdated) { 
         userToUpdate.balance = data.balance;
       }
@@ -308,6 +310,9 @@ export default function SettingsPage() {
           duration: 3000,
         });
     }
+    // Reset flags after submission logic
+    setBalanceUpdated(false);
+    setPasswordChanged(false);
   }
 
 
@@ -573,7 +578,7 @@ export default function SettingsPage() {
               <CardFooter className="border-t pt-6 px-0 flex flex-col sm:flex-row sm:justify-between items-center space-y-2 sm:space-y-0 sm:space-x-2">
                 <Button 
                   type="submit" 
-                  disabled={isLoading || (!form.formState.isDirty && !form.formState.submitCount && !balanceUpdated && !passwordChanged)} 
+                  disabled={isLoading || (!form.formState.isDirty && form.formState.submitCount === 0 && !balanceUpdated && !passwordChanged)} 
                   className="w-full sm:w-auto order-1 sm:order-2"
                 >
                   {isLoading ? (
@@ -641,6 +646,7 @@ export default function SettingsPage() {
     </div>
   );
 }
+
 
 
 
