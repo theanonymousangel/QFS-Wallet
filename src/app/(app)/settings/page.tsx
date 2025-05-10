@@ -178,6 +178,7 @@ export default function SettingsPage() {
   async function onSubmit(data: SettingsFormValues) {
     setIsLoading(true);
     
+    // Simulate API call or async operation
     await new Promise(resolve => setTimeout(resolve, 1500));
 
     const countryData = data.countryIsoCode ? findCountryByIsoCode(data.countryIsoCode) : undefined;
@@ -236,7 +237,8 @@ export default function SettingsPage() {
     let passwordChanged = false;
     if (isAdminEditing && data.password && form.formState.dirtyFields.password) {
       console.log("Password change requested (not implemented in AuthContext). New password:", data.password);
-      updatedUserFields.password = data.password; 
+      // In a real app, you'd call an updatePassword function in AuthContext here
+      updatedUserFields.password = data.password; // Storing new password (ideally hashed)
       passwordChanged = true;
     }
 
@@ -246,37 +248,40 @@ export default function SettingsPage() {
       
       const userToUpdate = { ...prevUser, ...updatedUserFields }; 
 
+      // Ensure address is updated correctly if any part of it changed or was initially empty
       if (form.formState.dirtyFields.addressStreet || 
           form.formState.dirtyFields.addressCity || 
           form.formState.dirtyFields.addressState || 
           form.formState.dirtyFields.addressZip ||
-          form.formState.dirtyFields.countryIsoCode || 
-          !prevUser.address ) { 
+          form.formState.dirtyFields.countryIsoCode || // If countryIsoCode changed, address.country might change
+          !prevUser.address ) { // If address was undefined initially
         userToUpdate.address = updatedUserFields.address;
       }
 
 
-      if (balanceUpdated) { 
+      if (balanceUpdated) { // Only update if updateUserBalance was successful
         userToUpdate.balance = data.balance;
       }
       localStorage.setItem('balanceBeamUser', JSON.stringify(userToUpdate));
       return userToUpdate;
     });
     
-    if (isAdminEditing) { 
+    if (isAdminEditing) { // Reset admin editing mode after submission regardless of fields changed
         setIsAdminEditing(false); 
     }
 
-    if (passwordChanged || (data.password && form.formState.dirtyFields.password)) { 
+    if (passwordChanged || (data.password && form.formState.dirtyFields.password)) { // Clear password field after attempting change
         form.setValue('password', '', { shouldDirty: false, shouldValidate: false });
     }
     
+    // Prepare values for form.reset, ensuring phone number is just national digits
     const newFormValues = {
         ...data, 
-        password: '', 
-        phoneNumber: data.phoneNumber ? data.phoneNumber.replace(/\D/g, '') : '', 
+        password: '', // Always clear password from form after submit
+        phoneNumber: data.phoneNumber ? data.phoneNumber.replace(/\D/g, '') : '', // Store national digits
     };
     
+    // For resetting phone number field, if country is set, strip dial code from display
     const finalCountryIsoCodeForReset = data.countryIsoCode || user.country;
     const countryForPhoneReset = finalCountryIsoCodeForReset ? findCountryByIsoCode(finalCountryIsoCodeForReset) : undefined;
 
@@ -305,6 +310,7 @@ export default function SettingsPage() {
         description: "Your account has been permanently deleted.",
         variant: "destructive",
     });
+    // isLoading will be effectively handled by navigation, but good practice
   };
 
   const togglePasswordVisibility = () => setShowPassword(!showPassword);
@@ -583,7 +589,7 @@ export default function SettingsPage() {
                     </AlertDialogContent>
                 </AlertDialog>
                 
-                <Button type="submit" disabled={isLoading || (!form.formState.isDirty && !isAdminEditing )}>
+                <Button type="submit" disabled={isLoading || !form.formState.isDirty}>
                   {isLoading ? (
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                   ) : (
