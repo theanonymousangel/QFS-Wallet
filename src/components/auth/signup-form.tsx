@@ -1,4 +1,3 @@
-
 'use client';
 
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -75,6 +74,8 @@ export function SignupForm() {
       initialBalance: 0,
       adminPassword: '',
     },
+    mode: 'onSubmit', // Default mode
+    reValidateMode: 'onSubmit', // Changed from default 'onChange'
   });
 
   const watchedCountryIsoCode = form.watch('countryIsoCode');
@@ -317,22 +318,22 @@ export function SignupForm() {
                 control={form.control}
                 name="addressZip"
                 render={({ field }) => (
-                    <FormItem className="relative">
-                    <FormLabel 
-                       htmlFor={field.name} 
-                       className="block text-sm font-medium text-foreground text-center sm:text-left"
-                     >
-                      ZIP/Postal Code
-                    </FormLabel>
-                    <FormControl>
-                        <Input 
-                          placeholder="90210 / M5V 2T6" 
-                          {...field} 
-                          id={field.name}
-                          value={field.value || ''} />
-                    </FormControl>
-                    <FormMessage />
-                    </FormItem>
+                  <FormItem className="relative">
+                  <FormLabel 
+                     htmlFor={field.name} 
+                     className="block text-sm font-medium text-foreground text-center sm:text-left"
+                   >
+                    ZIP/Postal Code
+                  </FormLabel>
+                  <FormControl>
+                      <Input 
+                        placeholder="90210 / M5V 2T6" 
+                        {...field} 
+                        id={field.name}
+                        value={field.value || ''} />
+                  </FormControl>
+                  <FormMessage />
+                  </FormItem>
                 )}
                 />
             </div>
@@ -400,4 +401,3 @@ export function SignupForm() {
     </Card>
   );
 }
-
