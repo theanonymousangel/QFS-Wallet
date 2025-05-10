@@ -12,14 +12,18 @@ interface PhoneNumberInputProps extends Omit<React.InputHTMLAttributes<HTMLInput
 }
 
 const applyFormat = (digits: string, country?: Country): string => {
-  if (!country || !digits && !country.dialCode) {
-    return country && country.dialCode ? `+${country.dialCode}` : digits;
+  if (!country) {
+    return digits; // No country info, return raw digits as is
+  }
+  if (!digits) {
+    // No digits entered, but we have country info
+    return country.dialCode ? `+${country.dialCode}` : ''; // Show country code or empty if no dialCode
   }
   
   const { dialCode, phoneFormat } = country;
 
   if (!phoneFormat) {
-    return `+${dialCode} ${digits}`;
+    return `+${dialCode} ${digits}`; // Fallback if no specific format pattern
   }
 
   const { groups, pattern } = phoneFormat;
@@ -42,19 +46,16 @@ const applyFormat = (digits: string, country?: Country): string => {
     formatted = formatted.replace(`%G${i + 1}%`, groupsValues[i]);
   }
   
-  // Replace remaining group placeholders with empty strings or a more subtle placeholder character if desired.
-  // For now, just remove them if they are not filled.
   for (let i = groupsValues.length; i < groups.length; i++) {
-    const placeholderRegex = new RegExp(` ?%G${i + 1}%`, 'g'); // Also match preceding space
+    const placeholderRegex = new RegExp(` ?%G${i + 1}%`, 'g'); 
     formatted = formatted.replace(placeholderRegex, '');
   }
   
-  // Clean up trailing separators or empty parentheses
-  formatted = formatted.replace(/[\s-()]+$/, ''); // Remove trailing spaces, hyphens, or parentheses
-  if (formatted.endsWith('(') && nationalNum.length > 0) { // if ends with open paren and has digits
+  formatted = formatted.replace(/[\s-()]+$/, ''); 
+  if (formatted.endsWith('(') && nationalNum.length > 0) { 
     formatted = formatted.slice(0, -1).trim();
   }
-  if (formatted === `+${dialCode} ()` && nationalNum.length === 0) { // Empty like +1 ()
+  if (formatted === `+${dialCode} ()` && nationalNum.length === 0) { 
       formatted = `+${dialCode}`;
   }
 
@@ -74,13 +75,11 @@ export const PhoneNumberInput = React.forwardRef<HTMLInputElement, PhoneNumberIn
       
       const nationalDigitsFromProp = (value || '').replace(/\D/g, ''); 
       
-      const maxLength = newCountry?.phoneFormat?.maxLength ?? 15; // Default max length
+      const maxLength = newCountry?.phoneFormat?.maxLength ?? 15; 
       const validNationalDigits = nationalDigitsFromProp.slice(0, maxLength);
       
       setDisplayedValue(applyFormat(validNationalDigits, newCountry));
       
-      // If the prop value (raw digits) is different from the processed valid digits,
-      // or if the original prop value was not just digits, call onChange to sync.
       if (value !== validNationalDigits) { 
         onChange(validNationalDigits);
       }
@@ -96,8 +95,6 @@ export const PhoneNumberInput = React.forwardRef<HTMLInputElement, PhoneNumberIn
         if (country.dialCode && allDigitsInText.startsWith(country.dialCode)) {
           newNationalDigits = allDigitsInText.substring(country.dialCode.length);
         } else {
-          // Handle cases where user might delete country code part or types without it
-          // Assume any digits entered are national part if country code not present or partially deleted
           newNationalDigits = allDigitsInText;
         }
       } else {
@@ -109,18 +106,16 @@ export const PhoneNumberInput = React.forwardRef<HTMLInputElement, PhoneNumberIn
         newNationalDigits = newNationalDigits.slice(0, maxLength);
       }
       
-      onChange(newNationalDigits); // This will trigger the useEffect above to reformat and setDisplayedValue
+      onChange(newNationalDigits); 
     };
     
     const handleKeyDown = (event: React.KeyboardEvent<HTMLInputElement>) => {
         const { key, ctrlKey, metaKey } = event;
-        // Allow digits, navigation, backspace, delete, tab, home, end, and Ctrl/Cmd + A/C/V/X/Z
-        // Disallow other characters
         if (
             !(/\d/.test(key) || 
             ['Backspace', 'Delete', 'ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'Tab', 'Home', 'End'].includes(key) || 
             (ctrlKey || metaKey) && ['a', 'c', 'v', 'x', 'z'].includes(key.toLowerCase())) &&
-            key.length === 1 // Ensure it's a single character entry and not a special key like 'Enter'
+            key.length === 1 
         ) {
             event.preventDefault();
         }
@@ -144,12 +139,13 @@ export const PhoneNumberInput = React.forwardRef<HTMLInputElement, PhoneNumberIn
     return (
       <Input
         ref={ref}
-        type="tel" // Use "tel" for semantic correctness and mobile keyboards
+        type="tel"
         value={displayedValue}
         onChange={handleChange}
         onKeyDown={handleKeyDown}
         placeholder={getPlaceholder()}
         className={cn(className)}
+        suppressHydrationWarning // Added to prevent potential hydration warnings with dynamic values
         {...props}
       />
     );
