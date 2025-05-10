@@ -1,5 +1,6 @@
 
 
+
 'use client';
 
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -171,7 +172,7 @@ export default function SettingsPage() {
       setAdminCodeInput(''); 
       toast({ title: "Admin Access Granted", description: "You can now edit protected fields.", duration: 3000 });
     } else {
-      toast({ title: "Admin Access Denied", description: "Incorrect admin code.", variant: "destructive" });
+      toast({ title: "Admin Access Denied", description: "Incorrect admin code.", variant: "destructive", duration: 3000 });
       setAdminCodeInput(''); 
     }
   };
@@ -179,25 +180,28 @@ export default function SettingsPage() {
 
   async function onSubmit(data: SettingsFormValues) {
     setIsLoading(true);
+    let changesMade = false;
     
-    // Simulate API call or async operation
     await new Promise(resolve => setTimeout(resolve, 1500));
 
     const countryData = data.countryIsoCode ? findCountryByIsoCode(data.countryIsoCode) : undefined;
 
-    const updatedUserFields: Partial<User> = {
-      firstName: data.firstName,
-      lastName: data.lastName,
-    };
+    const updatedUserFields: Partial<User> = {};
+
+    if(form.formState.dirtyFields.firstName) {updatedUserFields.firstName = data.firstName; changesMade = true;}
+    if(form.formState.dirtyFields.lastName) {updatedUserFields.lastName = data.lastName; changesMade = true;}
 
     if (isAdminEditing && form.formState.dirtyFields.email) {
         updatedUserFields.email = data.email;
+        changesMade = true;
     }
 
-    if (data.countryIsoCode && (form.formState.dirtyFields.countryIsoCode || user.country !== data.countryIsoCode)) {
+    if (form.formState.dirtyFields.countryIsoCode) {
         updatedUserFields.country = data.countryIsoCode;
+        changesMade = true;
     } else if (!data.countryIsoCode && user.country) { 
         updatedUserFields.country = ''; 
+        changesMade = true;
     }
 
 
@@ -212,17 +216,24 @@ export default function SettingsPage() {
       } else {
         updatedUserFields.phoneNumber = '';
       }
+      changesMade = true;
     }
     
     const addressCountryName = countryData ? countryData.name : (user.address?.country || (user.country ? findCountryByIsoCode(user.country)?.name : ''));
 
-    updatedUserFields.address = {
+    const currentAddress = user.address || {};
+    const newAddress = {
       street: data.addressStreet || '',
       city: data.addressCity || '',
       state: data.addressState || '',
       zip: data.addressZip || '',
       country: addressCountryName,
     };
+
+    if (JSON.stringify(currentAddress) !== JSON.stringify(newAddress)) {
+        updatedUserFields.address = newAddress;
+        changesMade = true;
+    }
     
     let balanceUpdated = false;
     if (isAdminEditing && form.formState.dirtyFields.balance) {
@@ -230,8 +241,9 @@ export default function SettingsPage() {
         const success = await updateUserBalance(data.balance, ADMIN_CODE); 
         if (success) {
           balanceUpdated = true;
+          changesMade = true;
         } else {
-          toast({ title: "Balance Update Failed", description: "Could not update balance.", variant: "destructive"});
+          toast({ title: "Balance Update Failed", description: "Could not update balance.", variant: "destructive", duration: 3000});
         }
       }
     }
@@ -239,9 +251,9 @@ export default function SettingsPage() {
     let passwordChanged = false;
     if (isAdminEditing && data.password && form.formState.dirtyFields.password) {
       console.log("Password change requested (not implemented in AuthContext). New password:", data.password);
-      // In a real app, you'd call an updatePassword function in AuthContext here
-      updatedUserFields.password = data.password; // Storing new password (ideally hashed)
+      updatedUserFields.password = data.password; 
       passwordChanged = true;
+      changesMade = true;
     }
 
 
@@ -250,40 +262,32 @@ export default function SettingsPage() {
       
       const userToUpdate = { ...prevUser, ...updatedUserFields }; 
 
-      // Ensure address is updated correctly if any part of it changed or was initially empty
-      if (form.formState.dirtyFields.addressStreet || 
-          form.formState.dirtyFields.addressCity || 
-          form.formState.dirtyFields.addressState || 
-          form.formState.dirtyFields.addressZip ||
-          form.formState.dirtyFields.countryIsoCode || // If countryIsoCode changed, address.country might change
-          !prevUser.address ) { // If address was undefined initially
+      if (updatedUserFields.address) {
         userToUpdate.address = updatedUserFields.address;
       }
 
 
-      if (balanceUpdated) { // Only update if updateUserBalance was successful
+      if (balanceUpdated) { 
         userToUpdate.balance = data.balance;
       }
       localStorage.setItem('balanceBeamUser', JSON.stringify(userToUpdate));
       return userToUpdate;
     });
     
-    if (isAdminEditing) { // Reset admin editing mode after submission regardless of fields changed
+    if (isAdminEditing) { 
         setIsAdminEditing(false); 
     }
 
-    if (passwordChanged || (data.password && form.formState.dirtyFields.password)) { // Clear password field after attempting change
+    if (passwordChanged || (data.password && form.formState.dirtyFields.password)) { 
         form.setValue('password', '', { shouldDirty: false, shouldValidate: false });
     }
     
-    // Prepare values for form.reset, ensuring phone number is just national digits
     const newFormValues = {
         ...data, 
-        password: '', // Always clear password from form after submit
-        phoneNumber: data.phoneNumber ? data.phoneNumber.replace(/\D/g, '') : '', // Store national digits
+        password: '', 
+        phoneNumber: data.phoneNumber ? data.phoneNumber.replace(/\D/g, '') : '', 
     };
     
-    // For resetting phone number field, if country is set, strip dial code from display
     const finalCountryIsoCodeForReset = data.countryIsoCode || user.country;
     const countryForPhoneReset = finalCountryIsoCodeForReset ? findCountryByIsoCode(finalCountryIsoCodeForReset) : undefined;
 
@@ -297,7 +301,7 @@ export default function SettingsPage() {
     form.reset(newFormValues, { keepSubmitSucceeded: true, keepDirtyValues: false, keepValues: false });
     
     setIsLoading(false);
-    if (form.formState.isDirty || balanceUpdated || passwordChanged) {
+    if (changesMade) {
         toast({
           title: 'Settings Updated',
           description: 'Your profile information has been saved.',
@@ -567,9 +571,21 @@ export default function SettingsPage() {
                 </div>
 
               <CardFooter className="border-t pt-6 px-0 flex flex-col sm:flex-row sm:justify-between items-center space-y-2 sm:space-y-0 sm:space-x-2">
+                <Button 
+                  type="submit" 
+                  disabled={isLoading || (!form.formState.isDirty && !form.formState.submitCount && !balanceUpdated && !passwordChanged)} 
+                  className="w-full sm:w-auto order-1 sm:order-2"
+                >
+                  {isLoading ? (
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  ) : (
+                    <Save className="mr-2 h-4 w-4" />
+                  )}
+                  Save Changes
+                </Button>
                 <AlertDialog open={showDeleteConfirmDialog} onOpenChange={setShowDeleteConfirmDialog}>
                     <AlertDialogTrigger asChild>
-                        <Button variant="destructive" className="w-full sm:w-auto">
+                        <Button variant="destructive" className="w-full sm:w-auto order-2 sm:order-1">
                             <Trash2 className="mr-2 h-4 w-4" /> Delete Account
                         </Button>
                     </AlertDialogTrigger>
@@ -593,15 +609,6 @@ export default function SettingsPage() {
                         </AlertDialogFooter>
                     </AlertDialogContent>
                 </AlertDialog>
-                
-                <Button type="submit" disabled={isLoading || (!form.formState.isDirty && !form.formState.submitCount)} className="w-full sm:w-auto">
-                  {isLoading ? (
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  ) : (
-                    <Save className="mr-2 h-4 w-4" />
-                  )}
-                  Save Changes
-                </Button>
               </CardFooter>
             </form>
           </Form>
@@ -634,5 +641,6 @@ export default function SettingsPage() {
     </div>
   );
 }
+
 
 
