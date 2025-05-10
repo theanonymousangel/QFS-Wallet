@@ -566,10 +566,10 @@ export default function SettingsPage() {
                         />
                 </div>
 
-              <CardFooter className="border-t pt-6 px-0 flex justify-between items-center">
+              <CardFooter className="border-t pt-6 px-0 flex flex-col sm:flex-row sm:justify-between items-center space-y-2 sm:space-y-0 sm:space-x-2">
                 <AlertDialog open={showDeleteConfirmDialog} onOpenChange={setShowDeleteConfirmDialog}>
                     <AlertDialogTrigger asChild>
-                        <Button variant="destructive">
+                        <Button variant="destructive" className="w-full sm:w-auto">
                             <Trash2 className="mr-2 h-4 w-4" /> Delete Account
                         </Button>
                     </AlertDialogTrigger>
@@ -594,7 +594,7 @@ export default function SettingsPage() {
                     </AlertDialogContent>
                 </AlertDialog>
                 
-                <Button type="submit" disabled={isLoading || (!form.formState.isDirty && !form.formState.submitCount)}>
+                <Button type="submit" disabled={isLoading || (!form.formState.isDirty && !form.formState.submitCount)} className="w-full sm:w-auto">
                   {isLoading ? (
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                   ) : (
