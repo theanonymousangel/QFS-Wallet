@@ -1,5 +1,3 @@
-
-
 'use client';
 
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -187,14 +185,12 @@ export default function SettingsPage() {
     const updatedUserFields: Partial<User> = {
       firstName: data.firstName,
       lastName: data.lastName,
-      // Email and password updates are conditional based on isAdminEditing
     };
 
     if (isAdminEditing && form.formState.dirtyFields.email) {
         updatedUserFields.email = data.email;
     }
 
-    // Country update
     if (data.countryIsoCode && (form.formState.dirtyFields.countryIsoCode || user.country !== data.countryIsoCode)) {
         updatedUserFields.country = data.countryIsoCode;
     } else if (!data.countryIsoCode && user.country) { 
@@ -237,14 +233,10 @@ export default function SettingsPage() {
       }
     }
     
-    // Password update logic: if a new password is provided and admin editing is enabled
     let passwordChanged = false;
     if (isAdminEditing && data.password && form.formState.dirtyFields.password) {
-      // In a real app, you would hash the password and send it to the backend.
-      // For this mock, we'll just acknowledge it.
-      // AuthContext doesn't directly handle password changes, this is a UI mock-up of it.
       console.log("Password change requested (not implemented in AuthContext). New password:", data.password);
-      updatedUserFields.password = data.password; // Store new password if admin editing
+      updatedUserFields.password = data.password; 
       passwordChanged = true;
     }
 
@@ -267,21 +259,16 @@ export default function SettingsPage() {
       if (balanceUpdated) { 
         userToUpdate.balance = data.balance;
       }
+      localStorage.setItem('balanceBeamUser', JSON.stringify(userToUpdate));
       return userToUpdate;
     });
-
-    setIsLoading(false);
-    toast({
-      title: 'Settings Updated',
-      description: 'Your profile information has been saved.',
-    });
     
-    if (isAdminEditing) { // If any admin field might have been edited
-        setIsAdminEditing(false); // Reset admin editing mode after save
+    if (isAdminEditing) { 
+        setIsAdminEditing(false); 
     }
 
-    if (passwordChanged || data.password) { 
-        form.setValue('password', '');
+    if (passwordChanged || (data.password && form.formState.dirtyFields.password)) { 
+        form.setValue('password', '', { shouldDirty: false, shouldValidate: false });
     }
     
     const newFormValues = {
@@ -301,6 +288,12 @@ export default function SettingsPage() {
     }
     
     form.reset(newFormValues, { keepSubmitSucceeded: true, keepDirtyValues: false, keepValues: false });
+    
+    setIsLoading(false);
+    toast({
+      title: 'Settings Updated',
+      description: 'Your profile information has been saved.',
+    });
   }
 
 
@@ -312,7 +305,6 @@ export default function SettingsPage() {
         description: "Your account has been permanently deleted.",
         variant: "destructive",
     });
-    // AuthContext's deleteAccount will handle redirect. No need to setIsLoading(false) here.
   };
 
   const togglePasswordVisibility = () => setShowPassword(!showPassword);
@@ -442,6 +434,7 @@ export default function SettingsPage() {
                             readOnly={!isAdminEditing}
                             aria-readonly={!isAdminEditing}
                             className="pr-10"
+                            suppressHydrationWarning={true}
                             />
                         </FormControl>
                         {isAdminEditing && (
@@ -452,8 +445,9 @@ export default function SettingsPage() {
                             className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
                             onClick={togglePasswordVisibility}
                             aria-label={showPassword ? "Hide password" : "Show password"}
+                            suppressHydrationWarning={true}
                             >
-                            {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                            {showPassword ? <Eye className="h-4 w-4" /> : <EyeOff className="h-4 w-4" />}
                             </Button>
                         )}
                     </div>
