@@ -1,5 +1,4 @@
 
-
 'use client';
 
 import { useState, useMemo, useEffect } from 'react';
@@ -184,12 +183,15 @@ export default function TransactionsPage() {
   }, [filteredAndSortedTransactions, currentPage]);
 
 
-  const handleSort = (key: SortKey) => {
-    if (sortKey === key) {
-      setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
+  const handleSort = (newSortKey: SortKey) => {
+    if (sortKey === newSortKey) {
+      // Toggle order if same key
+      setSortOrder(prevSortOrder => prevSortOrder === 'asc' ? 'desc' : 'asc');
     } else {
-      setSortKey(key);
-      setSortOrder('asc');
+      // New key selected
+      setSortKey(newSortKey);
+      // Set order: if new key is 'date', default to 'desc', otherwise 'asc'
+      setSortOrder(newSortKey === 'date' ? 'desc' : 'asc');
     }
     setCurrentPage(1); // Reset to first page on sort
   };
@@ -518,7 +520,3 @@ const handlePreviousPage = () => {
     </div>
   );
 }
-
-
-    
-
