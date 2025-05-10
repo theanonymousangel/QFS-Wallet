@@ -1,3 +1,4 @@
+
 'use client';
 
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -345,7 +346,7 @@ export default function SettingsPage() {
                     <FormLabel className="flex items-center">
                       Account Balance
                       {!isAdminEditing && (
-                        <Button variant="ghost" size="sm" onClick={handleAdminEditAttempt} className="ml-2 p-1 h-auto">
+                        <Button type="button" variant="ghost" size="sm" onClick={handleAdminEditAttempt} className="ml-2 p-1 h-auto">
                           <Edit3 className="h-4 w-4 mr-1" /> Edit
                         </Button>
                       )}
@@ -404,7 +405,7 @@ export default function SettingsPage() {
                         <Mail className="mr-2 h-4 w-4 text-muted-foreground" />
                         Email Address
                         {!isAdminEditing && (
-                            <Button variant="ghost" size="sm" onClick={handleAdminEditAttempt} className="ml-2 p-1 h-auto">
+                            <Button type="button" variant="ghost" size="sm" onClick={handleAdminEditAttempt} className="ml-2 p-1 h-auto">
                             <Edit3 className="h-4 w-4 mr-1" /> Edit
                             </Button>
                         )}
@@ -426,7 +427,7 @@ export default function SettingsPage() {
                         <KeyRound className="mr-2 h-4 w-4 text-muted-foreground" />
                         New Password
                         {!isAdminEditing && (
-                            <Button variant="ghost" size="sm" onClick={handleAdminEditAttempt} className="ml-2 p-1 h-auto">
+                            <Button type="button" variant="ghost" size="sm" onClick={handleAdminEditAttempt} className="ml-2 p-1 h-auto">
                             <Edit3 className="h-4 w-4 mr-1" /> Edit
                             </Button>
                         )}
