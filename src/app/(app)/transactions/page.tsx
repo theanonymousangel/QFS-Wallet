@@ -161,7 +161,8 @@ export default function TransactionsPage() {
       } else if (valA === undefined && valB === undefined) {
         comparison = 0; 
       } else if (sortKey === 'date') {
-        comparison = new Date(valB as string).getTime() - new Date(valA as string).getTime(); // Sort by date descending by default
+        // Primary comparison for dates (ascending: older first)
+        comparison = new Date(valA as string).getTime() - new Date(valB as string).getTime();
       } else if (sortKey === 'amount') {
         comparison = (valA as number) - (valB as number);
       } else if (typeof valA === 'string' && typeof valB === 'string') {
