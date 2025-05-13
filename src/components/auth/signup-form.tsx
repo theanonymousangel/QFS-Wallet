@@ -1,3 +1,4 @@
+
 'use client';
 
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -79,8 +80,8 @@ export function SignupForm() {
       initialBalance: 0,
       adminPassword: '',
     },
-    mode: 'onSubmit', // Validate on submit
-    reValidateMode: 'onSubmit', // Re-validate on submit after the first attempt
+    mode: 'onSubmit', 
+    reValidateMode: 'onSubmit', 
   });
 
   const watchedCountryIsoCode = form.watch('countryIsoCode');
@@ -89,9 +90,7 @@ export function SignupForm() {
   useEffect(() => {
     if (watchedCountryIsoCode) {
       setSelectedCountry(findCountryByIsoCode(watchedCountryIsoCode));
-      // Only reset/validate phone number if the form has been submitted at least once
-      // to avoid premature validation messages.
-      if (form.formState.isSubmitted) {
+      if (form.formState.isSubmitted || form.getFieldState('phoneNumber').isTouched) {
         form.setValue('phoneNumber', '', {
           shouldValidate: true, 
           shouldDirty: true, 
@@ -307,8 +306,14 @@ export function SignupForm() {
                      <PhoneNumberInput 
                         countryIsoCode={selectedCountry?.code}
                         value={field.value || ''}
-                        onChange={field.onChange}
-                        onBlur={field.onBlur} 
+                        onChange={(val) => {
+                           field.onChange(val);
+                           // Trigger validation manually if field becomes dirty or form is submitted
+                           if (form.formState.isSubmitted || form.getFieldState(field.name).isDirty) {
+                             form.trigger(field.name);
+                           }
+                        }}
+                        onBlur={() => form.trigger(field.name)} 
                         suppressHydrationWarning={true}
                      />
                   </FormControl>
@@ -377,8 +382,8 @@ export function SignupForm() {
                 render={({ field }) => (
                   <FormItem className="relative">
                   <FormLabel 
-                     htmlFor={field.name} // Use field.name for htmlFor to match input id
-                     className="block text-sm font-medium text-foreground text-center sm:text-left"
+                     htmlFor={field.name}
+                     className="block text-sm font-medium text-foreground text-left"
                    >
                     ZIP/Postal Code
                   </FormLabel>
@@ -386,7 +391,7 @@ export function SignupForm() {
                       <Input 
                         placeholder="90210 / M5V 2T6" 
                         {...field} 
-                        id={field.name} // Ensure id matches htmlFor
+                        id={field.name} 
                         value={field.value || ''} 
                         suppressHydrationWarning={true}
                       />
@@ -465,3 +470,4 @@ export function SignupForm() {
     </Card>
   );
 }
+
