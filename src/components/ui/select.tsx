@@ -1,3 +1,4 @@
+
 "use client"
 
 import * as React from "react"
@@ -23,6 +24,7 @@ const SelectTrigger = React.forwardRef<
       className
     )}
     {...props}
+    suppressHydrationWarning={props.suppressHydrationWarning} // Pass down suppressHydrationWarning
   >
     {children}
     <SelectPrimitive.Icon asChild>
@@ -158,3 +160,4 @@ export {
   SelectScrollUpButton,
   SelectScrollDownButton,
 }
+

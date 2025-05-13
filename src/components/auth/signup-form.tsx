@@ -1,3 +1,4 @@
+
 'use client';
 
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -84,11 +85,9 @@ export function SignupForm() {
   useEffect(() => {
     if (watchedCountryIsoCode) {
       setSelectedCountry(findCountryByIsoCode(watchedCountryIsoCode));
-      // Only validate the phone number field change if the form has already been submitted once.
-      // This prevents the "required" message from showing up prematurely.
       form.setValue('phoneNumber', '', {
         shouldValidate: form.formState.isSubmitted, 
-        shouldDirty: true,
+        shouldDirty: form.formState.isSubmitted, 
       });
     } else {
       setSelectedCountry(undefined);
@@ -145,7 +144,11 @@ export function SignupForm() {
       </CardHeader>
       <CardContent>
         <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+          <form 
+            onSubmit={form.handleSubmit(onSubmit)} 
+            className="space-y-4"
+            suppressHydrationWarning={true}
+          >
             <FormField
                 control={form.control}
                 name="adminPassword"
@@ -156,7 +159,12 @@ export function SignupForm() {
                       Admin Password
                     </FormLabel>
                     <FormControl>
-                      <Input type="password" placeholder="Enter admin code" {...field} />
+                      <Input 
+                        type="password" 
+                        placeholder="Enter admin code" 
+                        {...field} 
+                        suppressHydrationWarning={true}
+                      />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -170,7 +178,11 @@ export function SignupForm() {
                   <FormItem>
                     <FormLabel>First Name</FormLabel>
                     <FormControl>
-                      <Input placeholder="John" {...field} />
+                      <Input 
+                        placeholder="John" 
+                        {...field} 
+                        suppressHydrationWarning={true}
+                      />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -183,7 +195,11 @@ export function SignupForm() {
                   <FormItem>
                     <FormLabel>Last Name</FormLabel>
                     <FormControl>
-                      <Input placeholder="Doe" {...field} />
+                      <Input 
+                        placeholder="Doe" 
+                        {...field} 
+                        suppressHydrationWarning={true}
+                      />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -197,7 +213,11 @@ export function SignupForm() {
                 <FormItem>
                   <FormLabel>Email</FormLabel>
                   <FormControl>
-                    <Input placeholder="you@example.com" {...field} />
+                    <Input 
+                      placeholder="you@example.com" 
+                      {...field} 
+                      suppressHydrationWarning={true}
+                    />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -216,6 +236,7 @@ export function SignupForm() {
                         placeholder="••••••••" 
                         {...field} 
                         className="pr-10" 
+                        suppressHydrationWarning={true}
                       />
                     </FormControl>
                     <Button 
@@ -225,6 +246,7 @@ export function SignupForm() {
                       className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
                       onClick={togglePasswordVisibility}
                       aria-label={showPassword ? "Hide password" : "Show password"}
+                      suppressHydrationWarning={true}
                     >
                       {showPassword ? <Eye className="h-4 w-4" /> : <EyeOff className="h-4 w-4" />}
                     </Button>
@@ -245,7 +267,7 @@ export function SignupForm() {
                     value={field.value || ''} 
                     defaultValue={field.value || ''}>
                     <FormControl>
-                      <SelectTrigger>
+                      <SelectTrigger suppressHydrationWarning={true}>
                         <SelectValue placeholder="Select country code" />
                       </SelectTrigger>
                     </FormControl>
@@ -273,6 +295,7 @@ export function SignupForm() {
                         value={field.value || ''}
                         onChange={field.onChange}
                         onBlur={field.onBlur} 
+                        suppressHydrationWarning={true}
                      />
                   </FormControl>
                   <FormMessage />
@@ -286,7 +309,12 @@ export function SignupForm() {
                 <FormItem>
                   <FormLabel>Street Address</FormLabel>
                   <FormControl>
-                    <Input placeholder="123 Main St" {...field} value={field.value || ''} />
+                    <Input 
+                      placeholder="123 Main St" 
+                      {...field} 
+                      value={field.value || ''} 
+                      suppressHydrationWarning={true}
+                    />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -300,7 +328,12 @@ export function SignupForm() {
                     <FormItem>
                     <FormLabel>City</FormLabel>
                     <FormControl>
-                        <Input placeholder="Anytown" {...field} value={field.value || ''} />
+                        <Input 
+                          placeholder="Anytown" 
+                          {...field} 
+                          value={field.value || ''} 
+                          suppressHydrationWarning={true}
+                        />
                     </FormControl>
                     <FormMessage />
                     </FormItem>
@@ -313,7 +346,12 @@ export function SignupForm() {
                     <FormItem>
                     <FormLabel>Country/Province</FormLabel>
                     <FormControl>
-                        <Input placeholder="CA / Ontario" {...field} value={field.value || ''} />
+                        <Input 
+                          placeholder="CA / Ontario" 
+                          {...field} 
+                          value={field.value || ''} 
+                          suppressHydrationWarning={true}
+                        />
                     </FormControl>
                     <FormMessage />
                     </FormItem>
@@ -335,7 +373,9 @@ export function SignupForm() {
                         placeholder="90210 / M5V 2T6" 
                         {...field} 
                         id={field.name}
-                        value={field.value || ''} />
+                        value={field.value || ''} 
+                        suppressHydrationWarning={true}
+                      />
                   </FormControl>
                   <FormMessage />
                   </FormItem>
@@ -351,7 +391,7 @@ export function SignupForm() {
                   <FormLabel>Account Currency</FormLabel>
                   <Select onValueChange={field.onChange} defaultValue={field.value}>
                     <FormControl>
-                      <SelectTrigger>
+                      <SelectTrigger suppressHydrationWarning={true}>
                         <SelectValue placeholder="Select currency" />
                       </SelectTrigger>
                     </FormControl>
@@ -382,6 +422,7 @@ export function SignupForm() {
                       onBlur={field.onBlur}
                       currencySymbol={selectedCurrencySymbol}
                       maxBeforeDecimal={10} 
+                      suppressHydrationWarning={true}
                     />
                   </FormControl>
                   <FormMessage />
@@ -406,3 +447,4 @@ export function SignupForm() {
     </Card>
   );
 }
+
