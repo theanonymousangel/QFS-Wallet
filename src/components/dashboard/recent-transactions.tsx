@@ -91,7 +91,7 @@ export function RecentTransactions() {
           <CardDescription>Your latest financial activities.</CardDescription>
         </div>
         <Button asChild variant="outline" size="sm">
-          <Link href="/transactions">View All Transactions</Link>
+          <Link href="/transactions">All Transactions</Link>
         </Button>
       </CardHeader>
       <CardContent>
