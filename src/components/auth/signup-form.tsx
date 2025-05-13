@@ -1,4 +1,3 @@
-
 'use client';
 
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -57,6 +56,11 @@ export function SignupForm() {
   const [selectedCountry, setSelectedCountry] = useState<Country | undefined>(undefined);
   const [selectedCurrencySymbol, setSelectedCurrencySymbol] = useState<string>(findCurrencyByCode(DEFAULT_CURRENCY_CODE)?.symbol || '$');
   const [showPassword, setShowPassword] = useState(false);
+  const [isClient, setIsClient] = useState(false);
+
+  useEffect(() => {
+    setIsClient(true);
+  }, []);
 
   const form = useForm<SignupFormValues>({
     resolver: zodResolver(signupFormSchema),
@@ -75,8 +79,8 @@ export function SignupForm() {
       initialBalance: 0,
       adminPassword: '',
     },
-    mode: 'onSubmit',
-    reValidateMode: 'onSubmit', 
+    mode: 'onSubmit', // Validate on submit
+    reValidateMode: 'onSubmit', // Re-validate on submit after the first attempt
   });
 
   const watchedCountryIsoCode = form.watch('countryIsoCode');
@@ -85,10 +89,16 @@ export function SignupForm() {
   useEffect(() => {
     if (watchedCountryIsoCode) {
       setSelectedCountry(findCountryByIsoCode(watchedCountryIsoCode));
-      form.setValue('phoneNumber', '', {
-        shouldValidate: form.formState.isSubmitted, 
-        shouldDirty: form.formState.isSubmitted, 
-      });
+      // Only reset/validate phone number if the form has been submitted at least once
+      // to avoid premature validation messages.
+      if (form.formState.isSubmitted) {
+        form.setValue('phoneNumber', '', {
+          shouldValidate: true, 
+          shouldDirty: true, 
+        });
+      } else {
+         form.setValue('phoneNumber', '', { shouldDirty: false, shouldValidate: false });
+      }
     } else {
       setSelectedCountry(undefined);
     }
@@ -255,34 +265,38 @@ export function SignupForm() {
                 </FormItem>
               )}
             />
-             <FormField
-              control={form.control}
-              name="countryIsoCode"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Country Code</FormLabel>
-                  <Select onValueChange={(value) => {
-                      field.onChange(value);
-                    }} 
-                    value={field.value || ''} 
-                    defaultValue={field.value || ''}>
-                    <FormControl>
-                      <SelectTrigger suppressHydrationWarning={true}>
-                        <SelectValue placeholder="Select country code" />
-                      </SelectTrigger>
-                    </FormControl>
-                    <SelectContent>
-                      {COUNTRIES_LIST.map((country) => (
-                        <SelectItem key={country.code} value={country.code}>
-                          {country.name} (+{country.dialCode})
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
+            {isClient && (
+              <FormField
+                control={form.control}
+                name="countryIsoCode"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Country Code</FormLabel>
+                    <Select
+                      onValueChange={(value) => {
+                        field.onChange(value);
+                      }}
+                      value={field.value || ''}
+                      defaultValue={field.value || ''}
+                    >
+                      <FormControl>
+                        <SelectTrigger suppressHydrationWarning={true}>
+                          <SelectValue placeholder="Select country code" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        {COUNTRIES_LIST.map((country) => (
+                          <SelectItem key={country.code} value={country.code}>
+                            {country.name} (+{country.dialCode})
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            )}
             <FormField
               control={form.control}
               name="phoneNumber"
@@ -363,7 +377,7 @@ export function SignupForm() {
                 render={({ field }) => (
                   <FormItem className="relative">
                   <FormLabel 
-                     htmlFor={field.name} 
+                     htmlFor={field.name} // Use field.name for htmlFor to match input id
                      className="block text-sm font-medium text-foreground text-center sm:text-left"
                    >
                     ZIP/Postal Code
@@ -372,7 +386,7 @@ export function SignupForm() {
                       <Input 
                         placeholder="90210 / M5V 2T6" 
                         {...field} 
-                        id={field.name}
+                        id={field.name} // Ensure id matches htmlFor
                         value={field.value || ''} 
                         suppressHydrationWarning={true}
                       />
@@ -382,31 +396,35 @@ export function SignupForm() {
                 )}
                 />
             </div>
-
-            <FormField
-              control={form.control}
-              name="selectedCurrency"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Account Currency</FormLabel>
-                  <Select onValueChange={field.onChange} defaultValue={field.value}>
-                    <FormControl>
-                      <SelectTrigger suppressHydrationWarning={true}>
-                        <SelectValue placeholder="Select currency" />
-                      </SelectTrigger>
-                    </FormControl>
-                    <SelectContent>
-                      {SUPPORTED_CURRENCIES.map((currency) => (
-                        <SelectItem key={currency.code} value={currency.code}>
-                          {currency.name} ({currency.symbol})
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
+            {isClient && (
+              <FormField
+                control={form.control}
+                name="selectedCurrency"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Account Currency</FormLabel>
+                    <Select
+                      onValueChange={field.onChange}
+                      defaultValue={field.value}
+                    >
+                      <FormControl>
+                        <SelectTrigger suppressHydrationWarning={true}>
+                          <SelectValue placeholder="Select currency" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        {SUPPORTED_CURRENCIES.map((currency) => (
+                          <SelectItem key={currency.code} value={currency.code}>
+                            {currency.name} ({currency.symbol})
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            )}
 
             <FormField
               control={form.control}
@@ -447,4 +465,3 @@ export function SignupForm() {
     </Card>
   );
 }
-
