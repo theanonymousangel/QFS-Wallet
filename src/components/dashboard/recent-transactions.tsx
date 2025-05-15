@@ -11,18 +11,18 @@ import { format, parseISO } from 'date-fns';
 import { useEffect, useState } from 'react';
 import { useAuth } from '@/contexts/auth-context';
 import { findCurrencyByCode, getDefaultCurrency } from '@/lib/currencies';
+import { getTransactionsAction } from '@/actions/getTransactions';
 
 export function RecentTransactions() {
   const { user } = useAuth();
   const [recentTransactions, setRecentTransactions] = useState<Transaction[]>([]);
 
   const selectedUserCurrency = user ? (findCurrencyByCode(user.selectedCurrency) || getDefaultCurrency()) : getDefaultCurrency();
-
-  useEffect(() => {
-    const storedTransactions = localStorage.getItem('userTransactions');
+  const useEffectMethod = async () => {
+    const storedTransactions = await getTransactionsAction(user?._id ?? '');
     if (storedTransactions) {
       try {
-        const allTransactions: Transaction[] = JSON.parse(storedTransactions);
+        const allTransactions: Transaction[] = storedTransactions;
         
         if (!Array.isArray(allTransactions)) {
           console.error("User transactions from localStorage is not an array.");
@@ -54,6 +54,9 @@ export function RecentTransactions() {
     } else {
       setRecentTransactions([]);
     }
+  }
+  useEffect(() => {
+    useEffectMethod()
   }, [user?.totalTransactions, user?.id]); 
 
   const getTransactionIcon = (tx: Transaction) => {

@@ -31,6 +31,10 @@ import {
     AlertDialogTrigger,
   } from "@/components/ui/alert-dialog";
 import { findCurrencyByCode, getDefaultCurrency } from '@/lib/currencies';
+import { getTransactionsAction } from '@/actions/getTransactions';
+import { updateTransactionAction } from '@/actions/updateTransaction';
+import { deleteTransactionAction } from '@/actions/deleteTransaction';
+import { adjustTotalTransactionsAction } from '@/actions/updateTotalTransactions';
 
 const getTransactionIcon = (tx: Transaction) => {
   switch (tx.type) {
@@ -74,10 +78,9 @@ export default function TransactionsPage() {
     }).format(amount);
   };
 
-
-  useEffect(() => {
-    const storedTransactions = localStorage.getItem('userTransactions');
-    let loadedTransactions: Transaction[] = storedTransactions ? JSON.parse(storedTransactions) : [];
+  const useEffectMethod = async () => {
+    const storedTransactions = await getTransactionsAction(user?._id ?? '');
+    let loadedTransactions: Transaction[] = storedTransactions  ?? [];
     
     const now = new Date();
     let transactionsUpdated = false;
@@ -103,7 +106,6 @@ export default function TransactionsPage() {
                   ...prevUser,
                   balance: parseFloat(newBalance.toFixed(2)),
                 };
-                localStorage.setItem('balanceBeamUser', JSON.stringify(updatedUser));
                 return updatedUser;
               });
               updatePendingWithdrawals(Math.abs(tx.amount), 'subtract'); 
@@ -123,13 +125,17 @@ export default function TransactionsPage() {
     });
 
     if (transactionsUpdated) {
-      localStorage.setItem('userTransactions', JSON.stringify(updatedTransactions));
       setAllTransactions(updatedTransactions);
     } else {
       // Ensure unique IDs before setting state, even if no updates
       const uniqueTransactions = Array.from(new Map(loadedTransactions.map(item => [`${item.id}-${item.date}-${item.amount}`, item])).values());
       setAllTransactions(uniqueTransactions);
     }
+  }
+
+
+  useEffect(() => {
+    useEffectMethod()
   }, [toast, user, setUser, updatePendingWithdrawals, selectedUserCurrency.code]);
 
 
@@ -195,6 +201,7 @@ export default function TransactionsPage() {
   };
 
   const handleCancelTransaction = async (transactionId: string) => {
+    
     const txToCancel = allTransactions.find(tx => tx.id === transactionId);
 
     if (!txToCancel) {
@@ -207,11 +214,9 @@ export default function TransactionsPage() {
       return;
     }
 
-    const updatedTransactions = allTransactions.map(tx =>
-      tx.id === transactionId ? { ...tx, status: 'Cancelled' as 'Cancelled' } : tx
-    );
-    setAllTransactions(updatedTransactions);
-    localStorage.setItem('userTransactions', JSON.stringify(updatedTransactions));
+    await updateTransactionAction(user?._id ?? '', transactionId, { status: 'Cancelled' });
+    const allTrans = await getTransactionsAction(user?._id ?? '');
+    setAllTransactions(allTrans);
 
     if (user && txToCancel.type === 'Withdrawal') {
       const amountToRefund = Math.abs(txToCancel.amount);
@@ -223,7 +228,6 @@ export default function TransactionsPage() {
           ...prevUser,
           balance: parseFloat(newBalance.toFixed(2)),
         };
-        localStorage.setItem('balanceBeamUser', JSON.stringify(updatedUser));
         return updatedUser;
       });
   
@@ -248,19 +252,18 @@ export default function TransactionsPage() {
       toast({ title: "Cannot Delete", description: "Only rejected or cancelled transactions can be deleted.", variant: "destructive" });
       return;
     }
-
-    const updatedTransactions = allTransactions.filter(tx => tx.id !== transactionId);
-    setAllTransactions(updatedTransactions);
-    localStorage.setItem('userTransactions', JSON.stringify(updatedTransactions));
+    await deleteTransactionAction(user?._id ?? '', transactionId);
+    const allTrans = await getTransactionsAction(user?._id ?? '');
+    setAllTransactions(allTrans);
 
     if (user) {
+      await adjustTotalTransactionsAction(user?._id ?? '', -1);
       setUser(prevUser => {
         if (!prevUser) return null;
         const updatedUser = {
           ...prevUser,
           totalTransactions: Math.max(0, prevUser.totalTransactions - 1),
         };
-        localStorage.setItem('balanceBeamUser', JSON.stringify(updatedUser));
         return updatedUser;
       });
     }

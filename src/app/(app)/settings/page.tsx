@@ -272,7 +272,6 @@ export default function SettingsPage() {
       if (balanceUpdated) { 
         userToUpdate.balance = data.balance;
       }
-      localStorage.setItem('balanceBeamUser', JSON.stringify(userToUpdate));
       return userToUpdate;
     });
     

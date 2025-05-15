@@ -8,6 +8,11 @@ import type { User, Transaction } from '@/lib/types';
 import { ADMIN_CODE } from '@/lib/types'; 
 import { formatISO, parseISO, differenceInDays, addDays, isValid } from 'date-fns';
 import { findCountryByIsoCode, COUNTRIES_LIST } from '@/lib/countries';
+import { signupAction } from '@/actions/signup';
+import { addTransactionAction } from '@/actions/addTransaction';
+import { ITransaction } from '@/models/Transaction';
+import { updatePendingWithdrawalsAction } from '@/actions/updatePendingWithdrawals';
+import { loginAction } from '@/actions/login';
 
 interface AuthContextType {
   user: User | null;
@@ -25,8 +30,8 @@ interface AuthContextType {
     addressZip?: string 
   }) => Promise<boolean>;
   setUser: React.Dispatch<React.SetStateAction<User | null>>;
-  addTransaction: (transactionDetails: Omit<Transaction, 'id' | 'date' | 'status'>) => void;
-  updatePendingWithdrawals: (amount: number, action: 'add' | 'subtract') => void;
+  addTransaction: (transactionDetails: Omit<Transaction, 'id' | 'date' | 'status'>) => Promise<void>;
+  updatePendingWithdrawals: (amount: number, action: 'add' | 'subtract') => Promise<void>;
   updateUserBalance: (newBalance: number, adminCodeAttempt: string) => Promise<boolean>;
   deleteAccount: () => Promise<void>;
 }
@@ -173,12 +178,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         updatedUser.totalTransactions = allTransactions.length;
       }
 
-      localStorage.setItem('balanceBeamUser', JSON.stringify(updatedUser));
       setUser(updatedUser);
     } catch (error) {
       console.error("Error during initializeUserSession:", error);
       // Optionally, clear corrupted user data and log out
-      localStorage.removeItem('balanceBeamUser');
       localStorage.removeItem('userTransactions');
       setUser(null); // Ensure user is logged out
       router.push('/login'); // Redirect to login
@@ -195,13 +198,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           initializeUserSession(parsedUser);
         } else {
           console.error("Stored user data is invalid. Clearing.");
-          localStorage.removeItem('balanceBeamUser');
-          localStorage.removeItem('userTransactions');
         }
       } catch (error) {
         console.error("Failed to initialize user session from localStorage:", error);
-        localStorage.removeItem('balanceBeamUser'); 
-        localStorage.removeItem('userTransactions');
       }
     }
     setLoading(false);
@@ -248,36 +247,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
  const login = async (email: string, pass: string): Promise<boolean> => {
     setLoading(true);
-    await new Promise(resolve => setTimeout(resolve, 1000));
-
-    const storedUserString = localStorage.getItem('balanceBeamUser');
     
-    if (storedUserString) {
-        try {
-            const storedUser: User = JSON.parse(storedUserString);
-            if (storedUser.email && storedUser.password && 
-                storedUser.email.toLowerCase() === email.toLowerCase() && 
-                (storedUser.password === pass || ADMIN_CODE === pass)) {
-                initializeUserSession(storedUser);
-                setLoading(false);
-                return true;
-            }
-        } catch (e) {
-            console.error("Error parsing stored user data during login:", e);
-        }
-    }
-    
-    if (mockUser.email.toLowerCase() === email.toLowerCase() && (pass === mockUser.password || pass === ADMIN_CODE)) {
-        initializeUserSession(mockUser);
-         if (!localStorage.getItem('userTransactions')) { 
-            localStorage.setItem('userTransactions', JSON.stringify(mockTransactions));
-         }
-        setLoading(false);
-        return true;
-    }
+    const isSuccess = await loginAction(email, pass);
 
-    setLoading(false);
-    return false; 
+    if(isSuccess.success) {
+      initializeUserSession(isSuccess.user as User);
+      setLoading(false);
+      return true;
+    }else {
+      setLoading(false);
+      return false;
+    }
 };
 
 
@@ -328,10 +308,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       creationDate: formatISO(new Date()),
       lastInterestApplied: formatISO(new Date()), 
     };
-    initializeUserSession(newUser); 
-    localStorage.setItem('userTransactions', JSON.stringify([])); 
-    setLoading(false);
-    return true;
+    const isSuccess = await signupAction(userData);
+    if(isSuccess.success) {
+      initializeUserSession(isSuccess?.user as User); 
+      setLoading(false);
+      return true;
+    }else {
+      setLoading(false);
+      return false;
+    }
+   
   };
 
   const logout = () => {
@@ -355,58 +341,43 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     router.push('/login');
   };
   
- const addTransaction = (transactionDetails: Omit<Transaction, 'id' | 'date' | 'status'>) => {
+ const addTransaction = async (transactionDetails: Omit<Transaction, 'id' | 'date' | 'status'>) => {
+  const newTransactionCandidate = { 
+    ...transactionDetails,
+    userId: user?._id,
+    id: `txn-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+    date: new Date().toISOString(),
+    status: transactionDetails.type === 'Withdrawal' ? 'Pending' : 'Completed',
+  };  
+  const isSuccess = await addTransactionAction(newTransactionCandidate as ITransaction);
+
+  if(isSuccess.success) {
     setUser(currentUser => {
-      if (!currentUser) return null;
-
-      const newTransactionCandidate: Transaction = { 
-        ...transactionDetails,
-        id: `txn-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-        date: new Date().toISOString(),
-        status: transactionDetails.type === 'Withdrawal' ? 'Pending' : 'Completed',
-      };
-
-      const storedTransactionsString = localStorage.getItem('userTransactions');
-      let allTransactions: Transaction[] = storedTransactionsString ? JSON.parse(storedTransactionsString) : [];
-
-      const potentialDuplicate = allTransactions.find(tx => 
-        tx.amount === newTransactionCandidate.amount &&
-        tx.type === newTransactionCandidate.type &&
-        tx.description === newTransactionCandidate.description &&
-        (new Date().getTime() - parseISO(tx.date).getTime()) < 2000 
-      );
-
-      if (potentialDuplicate) {
-        console.warn("AuthContext:addTransaction - Potential duplicate transaction skipped", newTransactionCandidate);
-        return currentUser; 
-      }
-
-      allTransactions.unshift(newTransactionCandidate);
-      localStorage.setItem('userTransactions', JSON.stringify(allTransactions));
-      
+      if(!currentUser) return null; 
       const updatedUser = {
-        ...currentUser,
-        totalTransactions: allTransactions.length,
+          ...currentUser,
+          totalTransactions: isSuccess.totalTransactions ?? 0
       };
-      localStorage.setItem('balanceBeamUser', JSON.stringify(updatedUser));
       return updatedUser;
-    });
+  });
+  }
   };
   
-  const updatePendingWithdrawals = (amount: number, action: 'add' | 'subtract') => {
-    setUser(currentUser => {
-        if(!currentUser) return null;
-        const newPendingAmount = action === 'add' 
-            ? currentUser.pendingWithdrawals + amount
-            : currentUser.pendingWithdrawals - amount;
-        
+  const updatePendingWithdrawals = async (amount: number, action: 'add' | 'subtract') => {
+    const isSuccess = await updatePendingWithdrawalsAction(user?._id ??  '', amount, action);
+
+    if(isSuccess?.success) {
+      setUser(currentUser => {
+        if(!currentUser) return null; 
         const updatedUser = {
             ...currentUser,
-            pendingWithdrawals: Math.max(0, parseFloat(newPendingAmount.toFixed(2))) 
+            pendingWithdrawals: isSuccess?.pendingWithdrawals || 0
         };
-        localStorage.setItem('balanceBeamUser', JSON.stringify(updatedUser));
         return updatedUser;
     });
+    }
+
+    
   };
 
   const updateUserBalance = async (newBalance: number, adminCodeAttempt: string): Promise<boolean> => {

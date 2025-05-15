@@ -180,11 +180,10 @@ export default function WithdrawPage() {
     setIsLoading(true);
 
     try {
-      await new Promise(resolve => setTimeout(resolve, 1500)); // Simulate API call
-
+      
       const newBalance = user.balance - withdrawalAmount;
       setUser(prevUser => prevUser ? {...prevUser, balance: newBalance } : null);
-      updatePendingWithdrawals(withdrawalAmount, 'add');
+      await updatePendingWithdrawals(withdrawalAmount, 'add');
       
       const transactionDetails: Omit<Transaction, 'id' | 'date' | 'status'> = {
         description: `Withdrawal via ${data.payoutMethod}`,
@@ -210,7 +209,7 @@ export default function WithdrawPage() {
           }),
         }
       };
-      addTransaction(transactionDetails);
+      await addTransaction(transactionDetails);
       
       console.log("ADMIN NOTIFICATION (Simulated): Withdrawal Request", {
           amount: withdrawalAmount,
