@@ -42,6 +42,7 @@ import {
 import { COUNTRIES_LIST, findCountryByIsoCode, type Country } from '@/lib/countries';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { findCurrencyByCode, getDefaultCurrency } from '@/lib/currencies';
+import { updateUserAction } from '@/actions/updateUser';
 
 
 const settingsFormSchema = z.object({
@@ -183,8 +184,6 @@ export default function SettingsPage() {
   async function onSubmit(data: SettingsFormValues) {
     setIsLoading(true);
     let changesMade = false;
-    
-    await new Promise(resolve => setTimeout(resolve, 1500));
 
     const countryData = data.countryIsoCode ? findCountryByIsoCode(data.countryIsoCode) : undefined;
 
@@ -238,17 +237,17 @@ export default function SettingsPage() {
     }
     
     // Use setBalanceUpdated from component state
-    if (isAdminEditing && form.formState.dirtyFields.balance) {
-      if (data.balance !== user.balance) {
-        const success = await updateUserBalance(data.balance, ADMIN_CODE); 
-        if (success) {
-          setBalanceUpdated(true); // Update state
-          changesMade = true;
-        } else {
-          toast({ title: "Balance Update Failed", description: "Could not update balance.", variant: "destructive", duration: 3000});
-        }
-      }
-    }
+    // if (isAdminEditing && form.formState.dirtyFields.balance) {
+    //   if (data.balance !== user?.balance) {
+    //     const success = await updateUserBalance(data.balance, ADMIN_CODE); 
+    //     if (success) {
+    //       setBalanceUpdated(true); // Update state
+    //       changesMade = true;
+    //     } else {
+    //       toast({ title: "Balance Update Failed", description: "Could not update balance.", variant: "destructive", duration: 3000});
+    //     }
+    //   }
+    // }
     
     // Use setPasswordChanged from component state
     if (isAdminEditing && data.password && form.formState.dirtyFields.password) {
@@ -258,23 +257,19 @@ export default function SettingsPage() {
       changesMade = true;
     }
 
+    const userToUpdate = { ...user, ...updatedUserFields }; 
 
-    setUser(prevUser => {
-      if (!prevUser) return null;
-      
-      const userToUpdate = { ...prevUser, ...updatedUserFields }; 
+      userToUpdate.balance = data.balance;
 
-      if (updatedUserFields.address) {
-        userToUpdate.address = updatedUserFields.address;
-      }
+    if (updatedUserFields.address) {
+      userToUpdate.address = updatedUserFields.address;
+    }
+    const updatedUser = await updateUserAction(user?._id ?? '', userToUpdate as User);
+    if(updatedUser.success) {
+      setUser(updatedUser.updatedUser as User);
+    }
 
-      // If balance was updated via setBalanceUpdated, ensure user object reflects this for local storage
-      if (balanceUpdated) { 
-        userToUpdate.balance = data.balance;
-      }
-      return userToUpdate;
-    });
-    
+        
     if (isAdminEditing) { 
         setIsAdminEditing(false); 
     }
@@ -289,7 +284,7 @@ export default function SettingsPage() {
         phoneNumber: data.phoneNumber ? data.phoneNumber.replace(/\D/g, '') : '', 
     };
     
-    const finalCountryIsoCodeForReset = data.countryIsoCode || user.country;
+    const finalCountryIsoCodeForReset = data.countryIsoCode || user?.country;
     const countryForPhoneReset = finalCountryIsoCodeForReset ? findCountryByIsoCode(finalCountryIsoCodeForReset) : undefined;
 
     if (countryForPhoneReset && newFormValues.phoneNumber) {
@@ -317,7 +312,7 @@ export default function SettingsPage() {
 
   const handleDeleteAccountConfirm = async () => {
     setIsLoading(true);
-    await deleteAccount();
+    await deleteAccount(user?._id ?? '');
     toast({
         title: "Account Deleted",
         description: "Your account has been permanently deleted.",

@@ -11,7 +11,7 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  title: 'QFS Wallet',
+  title: 'Patriot Wallet',
   description: 'Your Modern Wallet Experience',
 };
 

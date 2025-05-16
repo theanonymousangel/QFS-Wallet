@@ -14,7 +14,7 @@ export default function AuthLayout({
                  <Gem className="h-10 w-10 text-primary-foreground" />
             </div>
           <h1 className="text-4xl font-bold tracking-tight text-foreground">
-            QFS Wallet
+            Patriot Wallet
           </h1>
           <p className="mt-2 text-muted-foreground">
             Easily and Securely Access Your Funds

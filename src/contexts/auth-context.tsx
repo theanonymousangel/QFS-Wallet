@@ -13,6 +13,8 @@ import { addTransactionAction } from '@/actions/addTransaction';
 import { ITransaction } from '@/models/Transaction';
 import { updatePendingWithdrawalsAction } from '@/actions/updatePendingWithdrawals';
 import { loginAction } from '@/actions/login';
+import { deleteAccountACtion } from '@/actions/deleteAccount';
+import { updateUserAction } from '@/actions/updateUser';
 
 interface AuthContextType {
   user: User | null;
@@ -33,7 +35,7 @@ interface AuthContextType {
   addTransaction: (transactionDetails: Omit<Transaction, 'id' | 'date' | 'status'>) => Promise<void>;
   updatePendingWithdrawals: (amount: number, action: 'add' | 'subtract') => Promise<void>;
   updateUserBalance: (newBalance: number, adminCodeAttempt: string) => Promise<boolean>;
-  deleteAccount: () => Promise<void>;
+  deleteAccount: (userId: string) => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -272,7 +274,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     addressZip?: string 
   }): Promise<boolean> => {
     setLoading(true);
-    await new Promise(resolve => setTimeout(resolve, 1000));
     
     if (userData.adminAccessPassword !== ADMIN_CODE) {
         setLoading(false);
@@ -381,28 +382,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const updateUserBalance = async (newBalance: number, adminCodeAttempt: string): Promise<boolean> => {
+    console.log('== updateUserBalance ==>', newBalance, adminCodeAttempt);
     if (adminCodeAttempt !== ADMIN_CODE) {
       return false;
     }
-    let operationSucceeded = false;
-    setUser(currentUser => {
-      if (!currentUser) return null;
-      const updatedUser = { ...currentUser, balance: parseFloat(newBalance.toFixed(2)) };
-      localStorage.setItem('balanceBeamUser', JSON.stringify(updatedUser));
-      operationSucceeded = true;
-      return updatedUser;
-    });
-    return operationSucceeded;
+    const updatedUser = { balance: parseFloat(newBalance.toFixed(2)) };
+    const userUpdated = await updateUserAction(user?._id ?? '', updatedUser as User);
+    console.log('== userUpdated===>', userUpdated);
+    if(userUpdated.success) {
+      setUser(userUpdated.updatedUser as User);
+    }
+    return userUpdated.success
   };
 
-  const deleteAccount = async (): Promise<void> => {
+  const deleteAccount = async (userId: string): Promise<void> => {
     setLoading(true);
-    localStorage.removeItem('balanceBeamUser');
-    localStorage.removeItem('userTransactions');
-    if (interestIntervalRef.current) {
-      clearInterval(interestIntervalRef.current);
-      interestIntervalRef.current = null;
-    }
+    await deleteAccountACtion(userId)
     setUser(null);
     setLoading(false);
     router.push('/signup'); 

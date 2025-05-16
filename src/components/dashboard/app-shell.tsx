@@ -100,14 +100,14 @@ export function AppShell({ children }: { children: ReactNode }) {
         <SheetHeader className="flex h-16 items-center border-b border-sidebar-border px-6 !flex-row !items-center !justify-start !space-y-0 !text-left">
           <Link href="/dashboard" className="flex items-center gap-2 font-semibold text-sidebar-primary">
             <Gem className="h-7 w-7" />
-            <SheetTitle className="text-xl text-sidebar-primary">QFS Wallet</SheetTitle>
+            <SheetTitle className="text-xl text-sidebar-primary">Patriot Wallet</SheetTitle>
           </Link>
         </SheetHeader>
       ) : (
         <div className="flex h-16 items-center border-b border-sidebar-border px-6">
           <Link href="/dashboard" className="flex items-center gap-2 font-semibold text-sidebar-primary">
             <Gem className="h-7 w-7" />
-            <span className="text-xl">QFS Wallet</span>
+            <span className="text-xl">Patriot Wallet</span>
           </Link>
         </div>
       )}
