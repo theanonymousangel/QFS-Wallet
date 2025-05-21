@@ -15,16 +15,17 @@ export function BalanceDisplay() {
 
   const balanceContainerRef = useRef<HTMLDivElement>(null);
   const measuringSpanRef = useRef<HTMLSpanElement>(null);
+  let formattedBalance = null;
+  if (user) {
 
-  if (!user) return null;
+  const selectedUserCurrency = findCurrencyByCode(user?.selectedCurrency) || getDefaultCurrency();
 
-  const selectedUserCurrency = findCurrencyByCode(user.selectedCurrency) || getDefaultCurrency();
-
-  const formattedBalance = new Intl.NumberFormat('en-US', { // 'en-US' for number formatting style
+  formattedBalance = new Intl.NumberFormat('en-US', { // 'en-US' for number formatting style
     style: 'currency',
     currency: selectedUserCurrency.code, // Use the user's selected currency code
     currencyDisplay: 'symbol', // Ensure symbol is used
   }).format(user.balance);
+  }
 
   useEffect(() => {
     if (!isVisible) {
@@ -51,7 +52,7 @@ export function BalanceDisplay() {
       }
       setCurrentFontSize(newOptimalSize);
     }
-  }, [user.balance, isVisible, formattedBalance, user.selectedCurrency]);
+  }, [user?.balance, isVisible, formattedBalance, user?.selectedCurrency]);
 
 
   return (

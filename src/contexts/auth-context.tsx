@@ -15,6 +15,7 @@ import { updatePendingWithdrawalsAction } from '@/actions/updatePendingWithdrawa
 import { loginAction } from '@/actions/login';
 import { deleteAccountACtion } from '@/actions/deleteAccount';
 import { updateUserAction } from '@/actions/updateUser';
+import { getTransactionsAction } from '@/actions/getTransactions';
 
 interface AuthContextType {
   user: User | null;
@@ -166,13 +167,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
 
-  const initializeUserSession = useCallback((userData: User) => {
+  const initializeUserSession = useCallback(async (userData: User) => {
     try {
       const { updatedUser, newTransactions } = applyInterestAndBonuses(userData);
       
       if (newTransactions.length > 0) {
-        const storedTransactions = localStorage.getItem('userTransactions');
-        let allTransactions: Transaction[] = storedTransactions ? JSON.parse(storedTransactions) : [];
+        let allTransactions: Transaction[] = await getTransactionsAction(user?._id || '') ?? [];
         const uniqueNewTransactions = newTransactions.filter(nt => !allTransactions.find(at => at.id === nt.id));
         allTransactions.push(...uniqueNewTransactions);
         allTransactions.sort((a, b) => parseISO(b.date).getTime() - parseISO(a.date).getTime());
@@ -183,8 +183,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setUser(updatedUser);
     } catch (error) {
       console.error("Error during initializeUserSession:", error);
-      // Optionally, clear corrupted user data and log out
-      localStorage.removeItem('userTransactions');
       setUser(null); // Ensure user is logged out
       router.push('/login'); // Redirect to login
     }
@@ -192,18 +190,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
 
   useEffect(() => {
-    const storedUser = localStorage.getItem('balanceBeamUser');
-    if (storedUser) {
-      try {
-        const parsedUser = JSON.parse(storedUser);
-        if (parsedUser && parsedUser.email && parsedUser.password) { 
-          initializeUserSession(parsedUser);
-        } else {
-          console.error("Stored user data is invalid. Clearing.");
-        }
+    let localUser = localStorage.getItem('balanceBeamUser');
+    
+    if (localUser) {
+      localUser = JSON.parse(localUser || '');
+      if(localUser) {
+        try {
+        initializeUserSession(localUser);
       } catch (error) {
         console.error("Failed to initialize user session from localStorage:", error);
       }
+      }
+      
     }
     setLoading(false);
   }, [initializeUserSession]);
@@ -227,7 +225,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
               updatedUser.totalTransactions = allTransactions.length;
             }
             
-            localStorage.setItem('balanceBeamUser', JSON.stringify(updatedUser));
             return updatedUser;
           } catch (error) {
             console.error("Error applying interest in interval:", error);
@@ -253,6 +250,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const isSuccess = await loginAction(email, pass);
 
     if(isSuccess.success) {
+      localStorage.setItem('balanceBeamUser', JSON.stringify(isSuccess.user));
       initializeUserSession(isSuccess.user as User);
       setLoading(false);
       return true;
@@ -280,7 +278,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         return false; 
     }
     
-    const countryData = COUNTRIES_LIST.find(c => c.code === userData.countryIsoCode);
+    const countryData = COUNTRIES_LIST.find(c => c.code === userData?.countryIsoCode || '');
     const fullPhoneNumber = userData.phoneNumber && countryData 
         ? `+${countryData.dialCode}${userData.phoneNumber.replace(/\D/g, '')}`
         : (userData.phoneNumber ? userData.phoneNumber.replace(/\D/g, '') : '');
@@ -292,7 +290,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       lastName: userData.lastName,
       email: userData.email,
       password: userData.password, 
-      country: countryData?.code || userData.countryIsoCode, 
+      country: countryData?.code || userData?.countryIsoCode, 
       phoneNumber: fullPhoneNumber,
       balance: userData.initialBalance,
       pendingWithdrawals: 0, 
@@ -304,13 +302,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         city: userData.addressCity || '', 
         state: userData.addressState || '', 
         zip: userData.addressZip || '', 
-        country: countryData?.name || userData.countryIsoCode, 
+        country: countryData?.name || userData?.countryIsoCode, 
       },
       creationDate: formatISO(new Date()),
       lastInterestApplied: formatISO(new Date()), 
     };
     const isSuccess = await signupAction(userData);
     if(isSuccess.success) {
+      localStorage.setItem('balanceBeamUser', JSON.stringify(isSuccess.user));
       initializeUserSession(isSuccess?.user as User); 
       setLoading(false);
       return true;
@@ -323,11 +322,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const logout = () => {
     setLoading(true);
-    if(user){ 
+    if(user){
       try {
-        const { updatedUser } = applyInterestAndBonuses(user); 
-        localStorage.setItem('balanceBeamUser', JSON.stringify(updatedUser));
-      } catch(e) {
+        const { updatedUser } = applyInterestAndBonuses(user);
+        localStorage.setItem('balanceBeamUser', JSON.stringify(updatedUser));      } catch(e) {
         console.error("Error applying interest on logout:", e);
         // Still proceed with logout even if interest application fails
         localStorage.setItem('balanceBeamUser', JSON.stringify(user)); // Save current state at least
@@ -339,6 +337,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
     setUser(null);
     setLoading(false);
+    localStorage.clear()
     router.push('/login');
   };
   

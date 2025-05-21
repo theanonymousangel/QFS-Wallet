@@ -1,28 +1,17 @@
 'use client';
 
 import Link from 'next/link';
-import { usePathname, useRouter } from 'next/navigation'; // usePathname for active route
+import { usePathname, useRouter } from 'next/navigation';
 import type { ReactNode } from 'react';
 import * as React from 'react';
 import {
-  Home,
-  Settings,
-  LogOut,
-  Landmark, // For Withdraw
-  ArrowRightLeft, // For Transactions
-  Menu,
-  Gem
+  Home, Settings, LogOut, Landmark, ArrowRightLeft, Menu, Gem,
 } from 'lucide-react';
 import { useAuth } from '@/contexts/auth-context';
-import { Avatar, AvatarFallback } from '@/components/ui/avatar'; // Removed AvatarImage
+import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
+  DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
 import { cn } from '@/lib/utils';
@@ -34,26 +23,42 @@ interface NavItem {
   icon: React.ElementType;
 }
 
-// Define Loader2 here so it's available before AppShell might use it
 const Loader2 = ({ className }: { className?: string }) => (
-  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={cn("animate-spin", className)}><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>
+  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={cn("animate-spin", className)}>
+    <path d="M21 12a9 9 0 1 1-6.219-8.56"/>
+  </svg>
 );
 
 export function AppShell({ children }: { children: ReactNode }) {
-  const { user, logout, loading } = useAuth();
+  const { logout, loading: authLoading } = useAuth();
   const router = useRouter();
   const currentPath = usePathname();
 
-  // This useEffect must be called unconditionally at the top level of the component.
-  // The logic inside can be conditional.
+  const [user, setUser] = React.useState<any>(null);
+  const [loading, setLoading] = React.useState(true);
+
+  // Load user from localStorage
   React.useEffect(() => {
-    if (!user && !loading && typeof window !== 'undefined') { // Ensure router.replace is only called client-side
-        router.replace('/login');
+    const localUser = typeof window !== 'undefined' ? localStorage.getItem('balanceBeamUser') : null;
+    if (localUser) {
+      try {
+        const parsedUser = JSON.parse(localUser);
+        setUser(parsedUser);
+      } catch (err) {
+        console.error('Error parsing localStorage user:', err);
+      }
+    }
+    setLoading(false);
+  }, []);
+
+  // Redirect if no user
+  React.useEffect(() => {
+    if (!loading && !user && typeof window !== 'undefined') {
+      router.replace('/login');
     }
   }, [user, loading, router]);
 
-
-  if (loading) {
+  if (authLoading || loading) {
     return (
       <div className="flex h-screen items-center justify-center bg-background">
         <Loader2 className="h-12 w-12 animate-spin text-primary" />
@@ -63,8 +68,6 @@ export function AppShell({ children }: { children: ReactNode }) {
   }
 
   if (!user) {
-    // If not loading, and still no user, the useEffect above should handle or be handling the redirect.
-    // Returning a loading/redirecting state here is fine as all hooks are done.
     return (
       <div className="flex h-screen items-center justify-center bg-background">
         <Loader2 className="h-12 w-12 animate-spin text-primary" />
@@ -81,18 +84,12 @@ export function AppShell({ children }: { children: ReactNode }) {
   ];
 
   const getInitials = (firstName?: string, lastName?: string) => {
-    if (firstName && lastName && firstName.length > 0 && lastName.length > 0) {
-      return `${firstName[0]}${lastName[0]}`.toUpperCase();
-    }
-    if (firstName && firstName.length > 0) {
-      return `${firstName.substring(0,2)}`.toUpperCase();
-    }
+    if (firstName && lastName) return `${firstName[0]}${lastName[0]}`.toUpperCase();
+    if (firstName) return firstName.substring(0, 2).toUpperCase();
     return '??';
   };
 
-  const userFullName = user ? `${user.firstName} ${user.lastName}` : 'User';
   const userInitials = getInitials(user?.firstName, user?.lastName);
-
 
   const sidebarContent = (isMobile?: boolean, inSheetContext?: boolean) => (
     <div className="flex h-full flex-col bg-sidebar text-sidebar-foreground">
@@ -129,10 +126,9 @@ export function AppShell({ children }: { children: ReactNode }) {
           ))}
         </ul>
       </nav>
-      
     </div>
   );
-  
+
   return (
     <div className="grid min-h-screen w-full lg:grid-cols-[280px_1fr]">
       <div className="hidden border-r border-sidebar-border bg-sidebar lg:block">
@@ -151,7 +147,7 @@ export function AppShell({ children }: { children: ReactNode }) {
               {sidebarContent(true, true)}
             </SheetContent>
           </Sheet>
-          
+
           <div className="ml-auto flex items-center gap-4">
             <ThemeToggleButton />
             <DropdownMenu>
